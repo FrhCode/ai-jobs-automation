@@ -19,7 +19,7 @@ export function JobsPage() {
   // Single source of truth: derive filters directly from URL
   const filters: JobsQuery = jobsQuerySchema.parse({
     recommendation: searchParams.get("recommendation") || undefined,
-    appStatus: searchParams.get("appStatus") || 'not_applied',
+    appStatus: searchParams.get("appStatus") || undefined,
     q: searchParams.get("q") || undefined,
     sort: searchParams.get("sort") || "score",
     dir: searchParams.get("dir") || "desc",
