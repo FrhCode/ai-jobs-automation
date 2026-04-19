@@ -87,7 +87,11 @@ export async function processLinkedInBatch(
         reusedCount++;
       }
     } else {
-      const [inserted] = await db.insert(linkedinPosts).values(data).returning();
+      const [inserted] = await db
+        .insert(linkedinPosts)
+        .values(data)
+        .onConflictDoUpdate({ target: linkedinPosts.contentHash, set: { batchId, updatedAt: new Date() } })
+        .returning();
       postIds.set(post.contentHash, inserted.id);
     }
   }

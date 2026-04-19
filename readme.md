@@ -138,6 +138,16 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
+**1.1.3** (Current)
+
+- **Handle Linkedin Post Duplicate**
+
+**1.1.2**
+
+- **Enhanced Email Workflow** — Open generated emails in new tab for easier composition and review
+- **Improved Filter Experience** — Fixed filter persistence and UI behavior for better job navigation
+- **Optimized AI Prompts** — Refined AI analysis prompts for more accurate job evaluation
+
 **1.1.1**
 
 - **Persist Generated Emails** — AI-generated application emails are now saved to the database (`email_subject`, `email_body` columns on `linkedin_posts`). Emails survive page refreshes.

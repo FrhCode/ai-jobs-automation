@@ -41,7 +41,12 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
     }
 
     // Filter by keywords
-    const keywordMatchedPosts = parsedPosts.filter((p) => p.matchedKeywords.length > 0);
+    const seen = new Set<string>();
+    const keywordMatchedPosts = parsedPosts.filter((p) => {
+      if (p.matchedKeywords.length === 0 || seen.has(p.contentHash)) return false;
+      seen.add(p.contentHash);
+      return true;
+    });
 
     if (keywordMatchedPosts.length === 0) {
       return { batchId: null, total: parsedPosts.length, matched: 0, status: 'no_keywords', message: 'No job-related keywords found in any post' };
