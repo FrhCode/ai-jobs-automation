@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -162,8 +162,20 @@ export function LinkedInPostDetailPage() {
 
   // Email generation state
   const generateEmail = useGenerateLinkedInEmail();
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
+  const [emailSubject, setEmailSubject] = useState(post?.emailSubject ?? '');
+  const [emailBody, setEmailBody] = useState(post?.emailBody ?? '');
+
+  // Sync email from post data when it loads (e.g. after refresh)
+  useEffect(() => {
+    if (post && !generateEmail.isPending) {
+      if (post.emailSubject && emailSubject !== post.emailSubject) {
+        setEmailSubject(post.emailSubject);
+      }
+      if (post.emailBody && emailBody !== post.emailBody) {
+        setEmailBody(post.emailBody);
+      }
+    }
+  }, [post?.emailSubject, post?.emailBody]);
 
   // Sync notes draft when post loads
   if (post && notesDraft !== (post.appNotes ?? '') && !updatePost.isPending) {

@@ -10,24 +10,30 @@ import {
 import type { JobsQuery } from "@/shared/schemas";
 import { jobsQuerySchema } from "@/shared/schemas";
 import { Briefcase, Search, SlidersHorizontal } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 export function JobsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filters, setFilters] = useState<JobsQuery>(
-    jobsQuerySchema.parse({
-      recommendation: searchParams.get("recommendation") || undefined,
-      appStatus: searchParams.get("appStatus") || 'not_applied',
-      q: searchParams.get("q") || undefined,
-      sort: searchParams.get("sort") || "score",
-      dir: searchParams.get("dir") || "desc",
-      page: Number(searchParams.get("page")) || 1,
-    }),
-  );
+
+  // Single source of truth: derive filters directly from URL
+  const filters: JobsQuery = jobsQuerySchema.parse({
+    recommendation: searchParams.get("recommendation") || undefined,
+    appStatus: searchParams.get("appStatus") || 'not_applied',
+    q: searchParams.get("q") || undefined,
+    sort: searchParams.get("sort") || "score",
+    dir: searchParams.get("dir") || "desc",
+    page: Number(searchParams.get("page")) || 1,
+  });
 
   // Local state for search input to avoid API call on every keystroke
   const [searchInput, setSearchInput] = useState(filters.q ?? "");
+
+  // Sync search input when URL changes externally (back/forward, link click)
+  const qFromUrl = filters.q ?? "";
+  useEffect(() => {
+    setSearchInput(qFromUrl);
+  }, [qFromUrl]);
 
   const { data, isLoading, isError } = useJobs(filters);
   const deleteJobs = useDeleteJobs();
@@ -36,17 +42,14 @@ export function JobsPage() {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateFilter = (key: keyof JobsQuery, value: string | undefined) => {
-    setFilters((prev) => {
-      if (prev[key] === value) return prev;
-      const next = { ...prev, [key]: value, page: 1 };
-      const sp = new URLSearchParams();
-      Object.entries(next).forEach(([k, v]) => {
-        if ((typeof v === "string" && v !== "") || typeof v === "number")
-          sp.set(k, String(v));
-      });
-      setSearchParams(sp);
-      return next;
+    if (filters[key] === value) return;
+    const next = { ...filters, [key]: value, ...(key !== "page" ? { page: 1 } : {}) };
+    const sp = new URLSearchParams();
+    Object.entries(next).forEach(([k, v]) => {
+      if ((typeof v === "string" && v !== "") || typeof v === "number")
+        sp.set(k, String(v));
     });
+    setSearchParams(sp);
   };
 
   const handleSearchChange = (value: string) => {

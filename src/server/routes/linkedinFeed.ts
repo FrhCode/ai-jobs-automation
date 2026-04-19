@@ -299,7 +299,12 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       model
     );
 
-    return { subject, body };
+    const [updated] = await db.update(linkedinPosts)
+      .set({ emailSubject: subject, emailBody: body, updatedAt: new Date() })
+      .where(eq(linkedinPosts.id, params.id))
+      .returning();
+
+    return { subject, body, post: updated };
   }, {
     requireAuth: true,
     params: z.object({ id: z.coerce.number().int().positive() }),

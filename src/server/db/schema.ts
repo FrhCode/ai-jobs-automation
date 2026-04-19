@@ -97,6 +97,8 @@ export const linkedinPosts = pgTable('linkedin_posts', {
   appStatus: text('app_status').default('not_applied'),
   appNotes: text('app_notes'),
   coverLetter: text('cover_letter'),
+  emailSubject: text('email_subject'),
+  emailBody: text('email_body'),
   appliedAt: timestamp('applied_at', { withTimezone: true }),
   applyUrl: text('apply_url'),
   contactEmail: text('contact_email'),

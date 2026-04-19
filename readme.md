@@ -138,6 +138,12 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
+**1.1.1**
+
+- **Persist Generated Emails** — AI-generated application emails are now saved to the database (`email_subject`, `email_body` columns on `linkedin_posts`). Emails survive page refreshes.
+- **URL-Synced Filter State** — Jobs and LinkedIn feed filters, pagination, and active batch IDs are now stored in URL search params. Filter selections survive refreshes and are shareable via URL.
+- **React 19 Cleanup** — Removed unnecessary `useCallback` usage across components.
+
 **1.1.0**
 
 - **LinkedIn Feed Import** — Upload LinkedIn post HTML files to analyze job opportunities

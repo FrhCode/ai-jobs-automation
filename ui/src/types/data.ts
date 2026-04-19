@@ -89,6 +89,8 @@ export interface LinkedInPost {
   appStatus: string | null;
   appNotes: string | null;
   coverLetter: string | null;
+  emailSubject: string | null;
+  emailBody: string | null;
   appliedAt: string | null;
   applyUrl: string | null;
   contactEmail: string | null;

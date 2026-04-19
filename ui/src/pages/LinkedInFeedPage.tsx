@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
@@ -46,22 +46,23 @@ const RECOMMENDATION_OPTIONS = ['All', 'Apply', 'Consider', 'Skip'];
 
 export function LinkedInFeedPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Filter state
-  const [programmerOnly, setProgrammerOnly] = useState(true);
-  const [recommendationFilter, setRecommendationFilter] = useState('All');
-  const [minScore, setMinScore] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  // Single source of truth: all filter + page + batch state from URL
+  const page = Number(searchParams.get("page")) || 1;
+  const programmerOnly = searchParams.get("programmer") !== "0";
+  const recommendationFilter = searchParams.get("recommendation") || "All";
+  const minScore = searchParams.get("minScore") || "";
+  const statusFilter = searchParams.get("status") || "All";
+  const activeBatchId = searchParams.get("batch");
 
   const filters = {
     isJob: programmerOnly ? true : undefined,
-    recommendation: recommendationFilter !== 'All' ? recommendationFilter : undefined,
+    recommendation: recommendationFilter !== "All" ? recommendationFilter : undefined,
     minScore: minScore ? Number(minScore) : undefined,
-    appStatus: statusFilter !== 'All' ? statusFilter : undefined,
+    appStatus: statusFilter !== "All" ? statusFilter : undefined,
   };
 
   const { data, isLoading } = useLinkedInPosts(page, filters);
@@ -69,22 +70,28 @@ export function LinkedInFeedPage() {
   const batch = useLinkedInBatchPolling(activeBatchId);
   const del = useDeleteLinkedInPost();
 
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      const file = acceptedFiles[0];
-      if (file) {
-        setActiveBatchId(null);
-        parse.mutate(file, {
-          onSuccess: (res) => {
-            if (res.batchId) {
-              setActiveBatchId(res.batchId);
-            }
-          },
-        });
-      }
-    },
-    [parse]
-  );
+  const updateUrl = (updates: Record<string, string | undefined>) => {
+    const sp = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([k, v]) => {
+      if (v === undefined || v === "") sp.delete(k);
+      else sp.set(k, v);
+    });
+    setSearchParams(sp);
+  };
+
+  const onDrop = (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      updateUrl({ batch: undefined });
+      parse.mutate(file, {
+        onSuccess: (res) => {
+          if (res.batchId) {
+            updateUrl({ batch: res.batchId });
+          }
+        },
+      });
+    }
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -106,14 +113,16 @@ export function LinkedInFeedPage() {
     ? Math.round((batch.data.processed / Math.max(batch.data.total, 1)) * 100)
     : 0;
 
-  const hasActiveFilters = programmerOnly || recommendationFilter !== 'All' || minScore !== '' || statusFilter !== 'All';
+  const hasActiveFilters = !programmerOnly || recommendationFilter !== "All" || minScore !== "" || statusFilter !== "All";
 
   const clearFilters = () => {
-    setProgrammerOnly(true);
-    setRecommendationFilter('All');
-    setMinScore('');
-    setStatusFilter('All');
-    setPage(1);
+    const sp = new URLSearchParams(searchParams);
+    sp.delete("page");
+    sp.delete("programmer");
+    sp.delete("recommendation");
+    sp.delete("minScore");
+    sp.delete("status");
+    setSearchParams(sp);
   };
 
   return (
@@ -177,7 +186,7 @@ export function LinkedInFeedPage() {
                 <input
                   type="checkbox"
                   checked={programmerOnly}
-                  onChange={(e) => { setProgrammerOnly(e.target.checked); setPage(1); }}
+                  onChange={(e) => { updateUrl({ programmer: e.target.checked ? undefined : "0", page: undefined }); }}
                   className="peer sr-only"
                 />
                 <div className="w-9 h-5 bg-surface-elevated border border-border-subtle rounded-full peer-checked:bg-cyan peer-checked:border-cyan transition-colors" />
@@ -191,7 +200,7 @@ export function LinkedInFeedPage() {
               <span className="text-xs text-text-muted shrink-0">Recommendation</span>
               <select
                 value={recommendationFilter}
-                onChange={(e) => { setRecommendationFilter(e.target.value); setPage(1); }}
+                onChange={(e) => { updateUrl({ recommendation: e.target.value === "All" ? undefined : e.target.value, page: undefined }); }}
                 className="flex-1 min-w-0 text-sm bg-surface-elevated border border-border-subtle rounded-lg px-3 py-1.5 text-text-primary focus:outline-none focus:border-cyan cursor-pointer dark:[&>option]:bg-surface dark:[&>option]:text-text-primary"
               >
                 {RECOMMENDATION_OPTIONS.map((r) => (
@@ -205,7 +214,7 @@ export function LinkedInFeedPage() {
               <span className="text-xs text-text-muted shrink-0">Status</span>
               <select
                 value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                onChange={(e) => { updateUrl({ status: e.target.value === "All" ? undefined : e.target.value, page: undefined }); }}
                 className="flex-1 min-w-0 text-sm bg-surface-elevated border border-border-subtle rounded-lg px-3 py-1.5 text-text-primary focus:outline-none focus:border-cyan cursor-pointer dark:[&>option]:bg-surface dark:[&>option]:text-text-primary"
               >
                 <option value="All">All</option>
@@ -223,7 +232,7 @@ export function LinkedInFeedPage() {
                 min={0}
                 max={100}
                 value={minScore}
-                onChange={(e) => { setMinScore(e.target.value); setPage(1); }}
+                onChange={(e) => { updateUrl({ minScore: e.target.value || undefined, page: undefined }); }}
                 placeholder="0–100"
                 className="flex-1 min-w-0 text-sm bg-surface-elevated border border-border-subtle rounded-lg px-3 py-1.5 text-text-primary focus:outline-none focus:border-cyan"
               />
@@ -444,7 +453,7 @@ export function LinkedInFeedPage() {
               <button
                 className="px-4 py-2 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-text-primary hover:border-border-hover transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
+                onClick={() => updateUrl({ page: String(page - 1) })}
               >
                 Previous
               </button>
@@ -455,7 +464,7 @@ export function LinkedInFeedPage() {
               <button
                 className="px-4 py-2 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-text-primary hover:border-border-hover transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 disabled={page >= Math.ceil(data.total / 20)}
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => updateUrl({ page: String(page + 1) })}
               >
                 Next
               </button>
