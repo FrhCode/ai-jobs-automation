@@ -141,12 +141,12 @@ export async function processLinkedInBatch(
   const fullAnalysisTasks: PostTask[] = [];
   for (const fr of filterResults) {
     if (!fr.result) {
-      // Filter failed — mark as analyzed with error
+      // Filter failed — leave as unanalyzed so retry can reprocess
       failedCount++;
       await db
         .update(linkedinPosts)
         .set({
-          aiAnalyzed: true,
+          aiAnalyzed: false,
           summary: `AI analysis failed: ${fr.error}`,
           updatedAt: new Date(),
         })
@@ -220,7 +220,7 @@ export async function processLinkedInBatch(
         await db
           .update(linkedinPosts)
           .set({
-            aiAnalyzed: true,
+            aiAnalyzed: false,
             summary: `AI analysis failed: ${result.error}`,
             updatedAt: new Date(),
           })
