@@ -1,29 +1,33 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import {
+  APP_STATUS,
+  APP_STATUS_LABEL,
+  RECOMMENDATION_COLOR,
+} from "@/shared/constants";
+import type { Job, JobQuestion } from "@/types/data";
 import {
   ArrowLeft,
-  RefreshCw,
-  ExternalLink,
-  MapPin,
-  DollarSign,
-  FileText,
-  Copy,
   Check,
-  Sparkles,
-  MessageCircleQuestion,
-  Plus,
-  Trash2,
-  Pencil,
-  Save,
-  X,
+  Copy,
+  DollarSign,
+  ExternalLink,
+  FileText,
   Loader2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Select } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Field, FieldLabel } from '@/components/ui/field';
-import type { Job, JobQuestion } from '@/types/data';
-import { APP_STATUS, APP_STATUS_LABEL, RECOMMENDATION_COLOR } from '@/shared/constants';
+  MapPin,
+  MessageCircleQuestion,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Save,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface JobDetailPanelProps {
   readonly job: Job;
@@ -34,21 +38,24 @@ interface JobDetailPanelProps {
   readonly questions?: JobQuestion[];
   readonly questionsLoading?: boolean;
   readonly onCreateQuestion?: (question: string) => void;
-  readonly onUpdateQuestion?: (questionId: number, data: { question?: string; answer?: string }) => void;
+  readonly onUpdateQuestion?: (
+    questionId: number,
+    data: { question?: string; answer?: string },
+  ) => void;
   readonly onDeleteQuestion?: (questionId: number) => void;
   readonly isCreatingQuestion?: boolean;
 }
 
 function scoreTextColor(score: number) {
-  if (score >= 80) return 'text-emerald';
-  if (score >= 60) return 'text-amber';
-  return 'text-rose';
+  if (score >= 80) return "text-emerald";
+  if (score >= 60) return "text-amber";
+  return "text-rose";
 }
 
 function scoreBgColor(score: number) {
-  if (score >= 80) return 'bg-emerald';
-  if (score >= 60) return 'bg-amber';
-  return 'bg-rose';
+  if (score >= 80) return "bg-emerald";
+  if (score >= 60) return "bg-amber";
+  return "bg-rose";
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -63,8 +70,12 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       className="flex items-center gap-1.5 text-xs text-text-muted hover:text-cyan transition-colors cursor-pointer"
     >
-      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? (
+        <Check className="w-3.5 h-3.5" />
+      ) : (
+        <Copy className="w-3.5 h-3.5" />
+      )}
+      {copied ? "Copied" : "Copy"}
     </button>
   );
 }
@@ -80,7 +91,7 @@ function QuestionCard({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState(q.question);
-  const [draftAnswer, setDraftAnswer] = useState(q.answer ?? '');
+  const [draftAnswer, setDraftAnswer] = useState(q.answer ?? "");
 
   const handleSave = () => {
     onUpdate(q.id, { question: draftQuestion, answer: draftAnswer });
@@ -99,7 +110,9 @@ function QuestionCard({
               className="text-sm font-medium resize-y"
             />
           ) : (
-            <h4 className="text-sm font-semibold text-text-primary leading-relaxed">{q.question}</h4>
+            <h4 className="text-sm font-semibold text-text-primary leading-relaxed">
+              {q.question}
+            </h4>
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -115,7 +128,7 @@ function QuestionCard({
               <button
                 onClick={() => {
                   setDraftQuestion(q.question);
-                  setDraftAnswer(q.answer ?? '');
+                  setDraftAnswer(q.answer ?? "");
                   setIsEditing(false);
                 }}
                 className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer"
@@ -187,16 +200,16 @@ export function JobDetailPanel({
 }: JobDetailPanelProps) {
   const navigate = useNavigate();
   const score = job.score ?? 0;
-  const [notesDraft, setNotesDraft] = useState(job.appNotes ?? '');
-  const [newQuestion, setNewQuestion] = useState('');
+  const [notesDraft, setNotesDraft] = useState(job.appNotes ?? "");
+  const [newQuestion, setNewQuestion] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [creatingQuestionText, setCreatingQuestionText] = useState('');
+  const [creatingQuestionText, setCreatingQuestionText] = useState("");
 
   const handleAddQuestion = () => {
     if (!newQuestion.trim() || !onCreateQuestion) return;
     setCreatingQuestionText(newQuestion.trim());
     onCreateQuestion(newQuestion.trim());
-    setNewQuestion('');
+    setNewQuestion("");
     setShowAddForm(false);
   };
 
@@ -205,12 +218,14 @@ export function JobDetailPanel({
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/jobs')}
+          onClick={() => navigate(-1)}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <span className="text-xs font-mono uppercase tracking-widest text-text-muted">Job Details</span>
+        <span className="text-xs font-mono uppercase tracking-widest text-text-muted">
+          Job Details
+        </span>
       </div>
 
       {/* Title Block */}
@@ -240,7 +255,14 @@ export function JobDetailPanel({
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm text-text-secondary">Match Score</span>
           {job.recommendation && (
-            <span className={cn('inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold', RECOMMENDATION_COLOR[job.recommendation as 'Apply' | 'Consider' | 'Skip'])}>
+            <span
+              className={cn(
+                "inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold",
+                RECOMMENDATION_COLOR[
+                  job.recommendation as "Apply" | "Consider" | "Skip"
+                ],
+              )}
+            >
               {job.recommendation}
             </span>
           )}
@@ -248,12 +270,17 @@ export function JobDetailPanel({
         <div className="flex items-center gap-4">
           <div className="flex-1 h-2 score-bar">
             <div
-              className={cn('score-bar-fill', scoreBgColor(score))}
+              className={cn("score-bar-fill", scoreBgColor(score))}
               style={{ width: `${score}%` }}
             />
           </div>
-          <span className={cn('text-2xl sm:text-3xl font-bold font-heading tabular-nums', scoreTextColor(score))}>
-            {job.score ?? '—'}
+          <span
+            className={cn(
+              "text-2xl sm:text-3xl font-bold font-heading tabular-nums",
+              scoreTextColor(score),
+            )}
+          >
+            {job.score ?? "—"}
           </span>
         </div>
       </div>
@@ -264,7 +291,9 @@ export function JobDetailPanel({
           <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted mb-3">
             AI Summary
           </h3>
-          <p className="text-sm text-text-secondary leading-relaxed">{job.summary}</p>
+          <p className="text-sm text-text-secondary leading-relaxed">
+            {job.summary}
+          </p>
         </div>
       )}
 
@@ -276,7 +305,10 @@ export function JobDetailPanel({
           </h3>
           <div className="flex flex-wrap gap-1.5">
             {job.matchedSkills?.map((s) => (
-              <span key={s} className="px-2 py-0.5 rounded text-xs font-mono badge-emerald">
+              <span
+                key={s}
+                className="px-2 py-0.5 rounded text-xs font-mono badge-emerald"
+              >
                 {s}
               </span>
             )) ?? <span className="text-sm text-text-muted">None</span>}
@@ -288,7 +320,10 @@ export function JobDetailPanel({
           </h3>
           <div className="flex flex-wrap gap-1.5">
             {job.missingSkills?.map((s) => (
-              <span key={s} className="px-2 py-0.5 rounded text-xs font-mono badge-rose">
+              <span
+                key={s}
+                className="px-2 py-0.5 rounded text-xs font-mono badge-rose"
+              >
                 {s}
               </span>
             )) ?? <span className="text-sm text-text-muted">None</span>}
@@ -322,7 +357,9 @@ export function JobDetailPanel({
             </div>
             <div className="space-y-1">
               <p className="text-sm text-text-secondary">No cover letter yet</p>
-              <p className="text-xs text-text-muted">Generate one with AI based on your resume</p>
+              <p className="text-xs text-text-muted">
+                Generate one with AI based on your resume
+              </p>
             </div>
             <button
               onClick={onGenerateCoverLetter}
@@ -356,8 +393,12 @@ export function JobDetailPanel({
             onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer"
           >
-            {showAddForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-            {showAddForm ? 'Cancel' : 'Add Question'}
+            {showAddForm ? (
+              <X className="w-3.5 h-3.5" />
+            ) : (
+              <Plus className="w-3.5 h-3.5" />
+            )}
+            {showAddForm ? "Cancel" : "Add Question"}
           </button>
         </div>
 
@@ -404,7 +445,9 @@ export function JobDetailPanel({
             </div>
             <div className="space-y-1">
               <p className="text-sm text-text-secondary">No questions yet</p>
-              <p className="text-xs text-text-muted">Paste application questions to get AI-generated answers</p>
+              <p className="text-xs text-text-muted">
+                Paste application questions to get AI-generated answers
+              </p>
             </div>
           </div>
         ) : (
@@ -413,9 +456,13 @@ export function JobDetailPanel({
               <div className="rounded-lg p-4 space-y-3 bg-cyan/5 border border-cyan/15">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan" />
-                  <span className="text-sm font-medium text-cyan">Generating answer...</span>
+                  <span className="text-sm font-medium text-cyan">
+                    Generating answer...
+                  </span>
                 </div>
-                <p className="text-sm text-text-secondary leading-relaxed">{creatingQuestionText}</p>
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  {creatingQuestionText}
+                </p>
               </div>
             )}
             {questions.map((q) => (
@@ -443,7 +490,9 @@ export function JobDetailPanel({
               onChange={(e) => onUpdate({ appStatus: e.target.value })}
             >
               {APP_STATUS.map((s) => (
-                <option key={s} value={s}>{APP_STATUS_LABEL[s]}</option>
+                <option key={s} value={s}>
+                  {APP_STATUS_LABEL[s]}
+                </option>
               ))}
             </Select>
           </Field>
@@ -453,7 +502,7 @@ export function JobDetailPanel({
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
               onBlur={() => {
-                if (notesDraft !== (job.appNotes ?? '')) {
+                if (notesDraft !== (job.appNotes ?? "")) {
                   onUpdate({ appNotes: notesDraft });
                 }
               }}

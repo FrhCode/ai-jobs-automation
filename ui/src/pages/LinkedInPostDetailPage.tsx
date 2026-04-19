@@ -224,7 +224,7 @@ export function LinkedInPostDetailPage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/linkedin-feed')}
+          onClick={() => navigate(-1)}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
