@@ -64,6 +64,8 @@ CREATE TABLE "linkedin_posts" (
 	"app_notes" text,
 	"cover_letter" text,
 	"applied_at" timestamp with time zone,
+	"apply_url" text,
+	"contact_email" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "linkedin_posts_content_hash_unique" UNIQUE("content_hash")

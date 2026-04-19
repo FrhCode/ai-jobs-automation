@@ -1,5 +1,5 @@
 {
-  "id": "1fd44bc5-9ea3-46ff-9e6c-1697dcc958b6",
+  "id": "e39f9e9f-e2bb-4bba-bea3-ded9b5c512c9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -406,6 +406,18 @@
         "applied_at": {
           "name": "applied_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "apply_url": {
+          "name": "apply_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contact_email": {
+          "name": "contact_email",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },

@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1776599243533,
-      "tag": "0000_superb_calypso",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1776601730762,
-      "tag": "0001_brave_wolverine",
+      "when": 1776603004465,
+      "tag": "0000_optimal_molecule_man",
       "breakpoints": true
     }
   ]
