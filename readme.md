@@ -135,6 +135,10 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
+**1.0.6**
+
+- Remove Animation On StatsCards
+
 **1.0.5**
 
 - Implement Seeing Open Router Creadit

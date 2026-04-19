@@ -67,8 +67,7 @@ export function StatsCards({ stats, credits, creditsLoading }: StatsCardsProps) 
         return (
           <div
             key={card.title}
-            className="glass-card rounded-xl p-5 animate-fade-in-up"
-            style={{ animationDelay: `${i * 55}ms` }}
+            className="glass-card rounded-xl p-5"
           >
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs text-text-muted uppercase tracking-wider font-mono">{card.title}</span>
@@ -84,8 +83,7 @@ export function StatsCards({ stats, credits, creditsLoading }: StatsCardsProps) 
         );
       })}
       <div
-        className="glass-card rounded-xl p-5 animate-fade-in-up"
-        style={{ animationDelay: `${cards.length * 55}ms` }}
+        className="glass-card rounded-xl p-5"
       >
         <div className="flex items-center justify-between mb-4">
           <span className="text-xs text-text-muted uppercase tracking-wider font-mono">OpenRouter Credits</span>
