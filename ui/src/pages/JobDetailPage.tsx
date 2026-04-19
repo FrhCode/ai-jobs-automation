@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { JobDetailPanel } from '@/components/JobDetailPanel';
-import { useJob, useUpdateJob, useReanalyzeJob } from '@/hooks/useJobs';
+import { useJob, useUpdateJob, useReanalyzeJob, useGenerateCoverLetter } from '@/hooks/useJobs';
 import type { AppStatus } from '@/shared/constants';
 
 export function JobDetailPage() {
@@ -9,6 +9,7 @@ export function JobDetailPage() {
   const { data: job, isLoading } = useJob(jobId);
   const updateJob = useUpdateJob();
   const reanalyze = useReanalyzeJob();
+  const generateCoverLetter = useGenerateCoverLetter();
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64 gap-3 text-text-secondary">
@@ -29,6 +30,8 @@ export function JobDetailPage() {
       job={job}
       onUpdate={(data) => updateJob.mutate({ id: jobId, appStatus: data.appStatus as AppStatus, appNotes: data.appNotes })}
       onReanalyze={() => reanalyze.mutate({ id: jobId })}
+      onGenerateCoverLetter={() => generateCoverLetter.mutate({ id: jobId })}
+      isGeneratingCoverLetter={generateCoverLetter.isPending}
     />
   );
 }

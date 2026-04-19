@@ -78,6 +78,12 @@ export async function reanalyzeJob(id: number) {
   });
 }
 
+export async function generateCoverLetter(id: number) {
+  return request<Job>(`/api/jobs/${id}/cover-letter`, {
+    method: 'POST',
+  });
+}
+
 export async function deleteJobs(ids: number[]) {
   return request<{ deleted: number }>('/api/jobs', {
     method: 'DELETE',

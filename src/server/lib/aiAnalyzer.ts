@@ -111,6 +111,82 @@ Scoring guide:
 - 0-49: Significant gaps, skip unless strategic`;
 }
 
+function createCoverLetterPrompt(job: {
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  descriptionSummary: string | null;
+  matchedSkills: string[] | null;
+  missingSkills: string[] | null;
+}, resumeText: string) {
+  return `You are an expert career coach who writes compelling, personalized cover letters.
+
+## Candidate Resume
+${resumeText.slice(0, 4000)}
+
+## Job Details
+- Title: ${job.title || 'Unknown'}
+- Company: ${job.company || 'Unknown'}
+- Location: ${job.location || 'Unknown'}
+- Role Summary: ${job.descriptionSummary || 'Not available'}
+
+## Matched Skills
+${(job.matchedSkills ?? []).join(', ') || 'None listed'}
+
+## Missing Skills
+${(job.missingSkills ?? []).join(', ') || 'None listed'}
+
+## Task
+Write a professional cover letter (300-500 words) for this job application. The tone should be confident, enthusiastic, and authentic.
+
+Requirements:
+1. Address the hiring manager generally (e.g., "Dear Hiring Manager,")
+2. Mention the specific role and company name
+3. Highlight 2-3 key matched skills with concrete examples
+4. Acknowledge any missing skills briefly but frame them as growth opportunities
+5. End with a strong call to action
+6. Do NOT include markdown formatting, headers, or code blocks — just plain text
+7. Return ONLY the cover letter text, nothing else`;
+}
+
+export async function generateCoverLetter(
+  job: {
+    title: string | null;
+    company: string | null;
+    location: string | null;
+    descriptionSummary: string | null;
+    matchedSkills: string[] | null;
+    missingSkills: string[] | null;
+  },
+  resumeText: string,
+  apiKey: string,
+  model: string
+): Promise<string> {
+  const client = createClient(apiKey);
+  const prompt = createCoverLetterPrompt(job, resumeText);
+
+  let responseText = '';
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Cover letter generation timed out after 60s')), 60000)
+    );
+    const completion = await Promise.race([
+      client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+      }),
+      timeout,
+    ]);
+    responseText = completion.choices[0]?.message?.content || '';
+  } catch (err) {
+    console.log(`  [AI] Cover letter error: ${(err as Error).message}`);
+    throw err;
+  }
+
+  return responseText.trim();
+}
+
 export interface AnalyzeInput {
   rawText: string;
   scrapeStatus: string;

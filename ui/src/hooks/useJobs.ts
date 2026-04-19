@@ -7,6 +7,7 @@ import {
   deleteJobs,
   enqueueJobs,
   reanalyzeJob,
+  generateCoverLetter,
 } from '@/api';
 import type { JobsQuery, UpdateJob } from '@/shared/schemas';
 
@@ -58,5 +59,16 @@ export function useReanalyzeJob() {
   return useMutation({
     mutationFn: ({ id }: { id: number }) => reanalyzeJob(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.jobs() }),
+  });
+}
+
+export function useGenerateCoverLetter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: number }) => generateCoverLetter(id),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: qk.jobs() });
+      qc.invalidateQueries({ queryKey: qk.job(variables.id) });
+    },
   });
 }

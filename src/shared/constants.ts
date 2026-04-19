@@ -1,4 +1,4 @@
-export const APP_STATUS = ['not_applied', 'applied', 'interviewing', 'offer', 'rejected'] as const;
+export const APP_STATUS = ['not_applied', 'applied', 'interviewing', 'offer', 'rejected', 'not_interested'] as const;
 export const RECOMMENDATION = ['Apply', 'Consider', 'Skip'] as const;
 export const SCRAPE_STATUS = ['success', 'partial', 'login_wall', 'failed'] as const;
 export const QUEUE_STATUS = ['pending', 'running', 'done', 'failed', 'skipped'] as const;

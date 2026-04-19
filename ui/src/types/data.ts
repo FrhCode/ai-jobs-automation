@@ -15,6 +15,7 @@ export interface Job {
   appStatus: string | null;
   appNotes: string | null;
   appliedAt: string | null;
+  coverLetter: string | null;
   addedAt: string;
   processedAt: string | null;
   updatedAt: string;

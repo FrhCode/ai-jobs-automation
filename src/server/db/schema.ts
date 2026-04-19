@@ -17,6 +17,7 @@ export const jobs = pgTable('jobs', {
   appStatus: text('app_status').default('not_applied'),
   appNotes: text('app_notes'),
   appliedAt: timestamp('applied_at', { withTimezone: true }),
+  coverLetter: text('cover_letter'),
   addedAt: timestamp('added_at', { withTimezone: true }).defaultNow().notNull(),
   processedAt: timestamp('processed_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

@@ -4,11 +4,13 @@ import { db } from '../db';
 import { jobs } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
 
+const skipFilter = sql`${jobs.recommendation} is distinct from 'Skip'`;
+
 export const statsRoutes = new Elysia({ prefix: '/api/stats' })
   .use(authPlugin)
 
   .get('/', async () => {
-    const totalResult = await db.select({ count: sql<number>`count(*)` }).from(jobs);
+    const totalResult = await db.select({ count: sql<number>`count(*)` }).from(jobs).where(skipFilter);
     const total = Number(totalResult[0]?.count ?? 0);
 
     const byRecommendation = await db
@@ -17,6 +19,7 @@ export const statsRoutes = new Elysia({ prefix: '/api/stats' })
         count: sql<number>`count(*)`,
       })
       .from(jobs)
+      .where(skipFilter)
       .groupBy(jobs.recommendation);
 
     const byAppStatus = await db
@@ -25,19 +28,20 @@ export const statsRoutes = new Elysia({ prefix: '/api/stats' })
         count: sql<number>`count(*)`,
       })
       .from(jobs)
+      .where(skipFilter)
       .groupBy(jobs.appStatus);
 
     const avgScoreResult = await db
       .select({ avg: sql<number>`avg(${jobs.score})` })
       .from(jobs)
-      .where(sql`${jobs.score} is not null`);
+      .where(sql`${jobs.score} is not null and ${skipFilter}`);
     const avgScore = avgScoreResult[0]?.avg ? Math.round(Number(avgScoreResult[0].avg)) : 0;
 
     // Score histogram: buckets of 10
     const scoreRows = await db
       .select({ score: jobs.score })
       .from(jobs)
-      .where(sql`${jobs.score} is not null`);
+      .where(sql`${jobs.score} is not null and ${skipFilter}`);
 
     const histogramMap: Record<number, number> = {};
     for (let i = 0; i < 10; i++) histogramMap[i * 10] = 0;
@@ -58,7 +62,7 @@ export const statsRoutes = new Elysia({ prefix: '/api/stats' })
         count: sql<number>`count(*)`,
       })
       .from(jobs)
-      .where(sql`${jobs.company} is not null and ${jobs.company} <> 'Unknown'`)
+      .where(sql`${jobs.company} is not null and ${jobs.company} <> 'Unknown' and ${skipFilter}`)
       .groupBy(jobs.company)
       .orderBy(sql`count(*) desc`)
       .limit(10);

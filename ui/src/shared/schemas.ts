@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { APP_STATUS } from './constants';
 
 export const jobsQuerySchema = z.object({
   recommendation: z.enum(['Apply', 'Consider', 'Skip']).optional(),
@@ -11,7 +12,7 @@ export const jobsQuerySchema = z.object({
 });
 
 export const updateJobSchema = z.object({
-  appStatus: z.enum(['not_applied', 'applied', 'interviewing', 'offer', 'rejected']).optional(),
+  appStatus: z.enum(APP_STATUS).optional(),
   appNotes: z.string().optional(),
   appliedAt: z.string().datetime().optional(),
 });
