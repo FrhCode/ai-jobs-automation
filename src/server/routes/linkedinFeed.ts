@@ -1,10 +1,11 @@
 import Elysia from 'elysia';
 import { z } from 'zod';
-import { eq, inArray, desc, asc, sql, and, gte } from 'drizzle-orm';
+import { eq, inArray, desc, asc, sql, and, gte, like } from 'drizzle-orm';
 import { db } from '../db';
 import { linkedinPosts, resume, settings, linkedinPostQuestions } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
 import { parseLinkedInHtml } from '../lib/linkedinParser';
+import type { ParsedPost } from '../lib/linkedinParser';
 import { processLinkedInBatch } from '../lib/linkedinProcessor';
 import { generateCoverLetter, generateAnswer, generateApplicationEmail } from '../lib/aiAnalyzer';
 
@@ -95,16 +96,46 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
     requireAuth: true,
   })
 
+  .get('/linkedin-feed/batches', async () => {
+    const rows = await db
+      .select({
+        batchId: linkedinPosts.batchId,
+        total: sql<number>`count(*)`,
+        processed: sql<number>`sum(case when ${linkedinPosts.aiAnalyzed} = true then 1 else 0 end)`,
+        failed: sql<number>`sum(case when ${linkedinPosts.summary} like 'AI analysis failed:%' then 1 else 0 end)`,
+        createdAt: sql<string>`min(${linkedinPosts.createdAt})`,
+      })
+      .from(linkedinPosts)
+      .where(sql`${linkedinPosts.batchId} is not null`)
+      .groupBy(linkedinPosts.batchId)
+      .orderBy(sql`min(${linkedinPosts.createdAt}) desc`);
+
+    return rows.map((r) => ({
+      batchId: r.batchId!,
+      total: Number(r.total),
+      processed: Number(r.processed),
+      failed: Number(r.failed),
+      createdAt: r.createdAt,
+    }));
+  }, {
+    requireAuth: true,
+  })
+
   .get('/linkedin-feed/batch/:batchId', async ({ params }) => {
     const { batchId } = params;
 
     const countResult = await db
-      .select({ count: sql<number>`count(*)`, analyzed: sql<number>`sum(case when ${linkedinPosts.aiAnalyzed} = true then 1 else 0 end)` })
+      .select({
+        count: sql<number>`count(*)`,
+        analyzed: sql<number>`sum(case when ${linkedinPosts.aiAnalyzed} = true then 1 else 0 end)`,
+        failed: sql<number>`sum(case when ${linkedinPosts.summary} like 'AI analysis failed:%' then 1 else 0 end)`,
+      })
       .from(linkedinPosts)
       .where(eq(linkedinPosts.batchId, batchId));
 
     const total = Number(countResult[0]?.count ?? 0);
     const processed = Number(countResult[0]?.analyzed ?? 0);
+    const failed = Number(countResult[0]?.failed ?? 0);
 
     const posts = await db
       .select()
@@ -117,9 +148,69 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       batchId,
       total,
       processed,
+      failed,
       status: processed >= total ? 'completed' : 'processing',
       posts,
     };
+  }, {
+    requireAuth: true,
+    params: z.object({ batchId: z.string().min(1) }),
+  })
+
+  .post('/linkedin-feed/batch/:batchId/retry', async ({ params, set }) => {
+    const { batchId } = params;
+
+    const failedPosts = await db
+      .select()
+      .from(linkedinPosts)
+      .where(and(
+        eq(linkedinPosts.batchId, batchId),
+        like(linkedinPosts.summary, 'AI analysis failed:%')
+      ));
+
+    if (failedPosts.length === 0) {
+      return { retriedCount: 0, batchId, message: 'No failed posts found' };
+    }
+
+    await db
+      .update(linkedinPosts)
+      .set({ aiAnalyzed: false, summary: null, updatedAt: new Date() })
+      .where(inArray(linkedinPosts.id, failedPosts.map((p) => p.id)));
+
+    const [resumeRow, apiKeyRow, modelRow] = await Promise.all([
+      db.select().from(resume).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_api_key')).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_model')).limit(1),
+    ]);
+
+    const resumeText = resumeRow[0]?.extractedText || '';
+    const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+
+    if (!resumeText || !apiKey) {
+      set.status = 400;
+      return { message: 'Resume and API key required' };
+    }
+
+    const parsedPosts: ParsedPost[] = failedPosts.map((p) => ({
+      contentHash: p.contentHash,
+      authorName: p.authorName,
+      authorHeadline: p.authorHeadline,
+      postContent: p.postContent,
+      rawHtml: p.rawHtml || '',
+      matchedKeywords: p.matchedKeywords || [],
+    }));
+
+    processLinkedInBatch(parsedPosts, new Map(), {
+      batchId,
+      resumeText,
+      apiKey,
+      model,
+    }).catch((err) => {
+      console.error(`[LinkedIn Batch] ${batchId} retry failed:`, err);
+    });
+
+    return { retriedCount: failedPosts.length, batchId, message: `Retrying ${failedPosts.length} failed posts` };
   }, {
     requireAuth: true,
     params: z.object({ batchId: z.string().min(1) }),

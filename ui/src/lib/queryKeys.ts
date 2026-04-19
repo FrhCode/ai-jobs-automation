@@ -11,5 +11,6 @@ export const qk = {
   linkedinPosts: (page?: number, filters?: Record<string, unknown>) => ['linkedin-posts', page ?? 1, filters ?? {}] as const,
   linkedinPost: (id: number) => ['linkedin-post', id] as const,
   linkedinBatch: (batchId: string) => ['linkedin-batch', batchId] as const,
+  linkedinBatches: () => ['linkedin-batches'] as const,
   linkedinPostQuestions: (id: number) => ['linkedin-post', id, 'questions'] as const,
 };

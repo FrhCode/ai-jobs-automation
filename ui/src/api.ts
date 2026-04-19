@@ -217,14 +217,28 @@ export async function parseLinkedInFeed(file: File) {
   return res.json() as Promise<{ batchId: string | null; total: number; matched: number; status: string; message?: string }>;
 }
 
+export async function getLinkedInBatches() {
+  return request<{ batchId: string; total: number; processed: number; failed: number; createdAt: string }[]>(
+    '/api/linkedin-feed/batches'
+  );
+}
+
 export async function getLinkedInBatchStatus(batchId: string) {
   return request<{
     batchId: string;
     total: number;
     processed: number;
+    failed: number;
     status: string;
     posts: LinkedInPost[];
   }>(`/api/linkedin-feed/batch/${batchId}`);
+}
+
+export async function retryLinkedInBatch(batchId: string) {
+  return request<{ retriedCount: number; batchId: string; message: string }>(
+    `/api/linkedin-feed/batch/${batchId}/retry`,
+    { method: 'POST' }
+  );
 }
 
 export async function getLinkedInPosts(page = 1, limit = 20, filters: { isJob?: boolean; recommendation?: string; minScore?: number; appStatus?: string } = {}) {

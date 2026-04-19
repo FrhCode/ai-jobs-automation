@@ -4,11 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { BatchHistoryModal } from '@/components/BatchHistoryModal';
 import {
   useLinkedInPosts,
   useParseLinkedInFeed,
   useLinkedInBatchPolling,
   useDeleteLinkedInPost,
+  useRetryLinkedInBatch,
 } from '@/hooks/useLinkedInFeed';
 import {
   Upload,
@@ -23,6 +25,7 @@ import {
   SlidersHorizontal,
   Link as LinkIcon,
   Mail,
+  History,
 } from 'lucide-react';
 import { extractUrls, extractEmails } from '@/lib/extractContact';
 import { APP_STATUS, APP_STATUS_LABEL, APP_STATUS_COLOR } from '@/shared/constants';
@@ -49,6 +52,7 @@ export function LinkedInFeedPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
   const [showFilters, setShowFilters] = useState(false);
+  const [showBatchHistory, setShowBatchHistory] = useState(false);
 
   // Single source of truth: all filter + page + batch state from URL
   const page = Number(searchParams.get("page")) || 1;
@@ -69,6 +73,7 @@ export function LinkedInFeedPage() {
   const parse = useParseLinkedInFeed();
   const batch = useLinkedInBatchPolling(activeBatchId);
   const del = useDeleteLinkedInPost();
+  const retry = useRetryLinkedInBatch();
 
   const updateUrl = (updates: Record<string, string | undefined>) => {
     const sp = new URLSearchParams(searchParams);
@@ -127,6 +132,12 @@ export function LinkedInFeedPage() {
 
   return (
     <div className="space-y-6">
+      <BatchHistoryModal
+        open={showBatchHistory}
+        onClose={() => setShowBatchHistory(false)}
+        onSelectBatch={(batchId) => updateUrl({ batch: batchId })}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
@@ -134,6 +145,13 @@ export function LinkedInFeedPage() {
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">LinkedIn Feed</h1>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowBatchHistory(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border-subtle bg-surface-elevated text-text-secondary hover:border-border-hover transition-all cursor-pointer"
+          >
+            <History className="w-3.5 h-3.5" />
+            Batch History
+          </button>
           <button
             onClick={() => setShowFilters((s) => !s)}
             className={cn(
@@ -297,14 +315,27 @@ export function LinkedInFeedPage() {
       {activeBatchId && batch.data?.status === 'completed' && (
         <div className="glass-card rounded-xl p-4 flex items-center gap-3 animate-fade-in-up">
           <CheckCircle2 className="w-5 h-5 text-emerald shrink-0" />
-          <div className="text-sm">
-            <span className="text-text-primary font-medium">
-              Analysis complete
-            </span>
-            <span className="text-text-secondary">
-              {' '}{batch.data.total} posts processed
-            </span>
+          <div className="text-sm flex-1">
+            <span className="text-text-primary font-medium">Analysis complete</span>
+            <span className="text-text-secondary"> {batch.data.total} posts processed</span>
+            {(batch.data.failed ?? 0) > 0 && (
+              <span className="text-rose"> · {batch.data.failed} failed</span>
+            )}
           </div>
+          {(batch.data.failed ?? 0) > 0 && (
+            <button
+              onClick={() => retry.mutate(activeBatchId)}
+              disabled={retry.isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose/10 text-rose border border-rose/20 hover:bg-rose/20 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {retry.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <AlertCircle className="w-3.5 h-3.5" />
+              )}
+              Retry {batch.data.failed} failed
+            </button>
+          )}
         </div>
       )}
 

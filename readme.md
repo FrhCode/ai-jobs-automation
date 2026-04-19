@@ -138,7 +138,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.3** (Current)
+**1.1.4** (Current)
+
+- **Add Retry For Failed Batch Linkedin Post**
+
+**1.1.3**
 
 - **Handle Linkedin Post Duplicate**
 

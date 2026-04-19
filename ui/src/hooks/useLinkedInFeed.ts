@@ -4,7 +4,9 @@ import {
   parseLinkedInFeed,
   getLinkedInPosts,
   getLinkedInPost,
+  getLinkedInBatches,
   getLinkedInBatchStatus,
+  retryLinkedInBatch,
   updateLinkedInPost,
   generateLinkedInCoverLetter,
   generateLinkedInEmail,
@@ -128,6 +130,24 @@ export function useDeleteLinkedInPost() {
     mutationFn: (id: number) => deleteLinkedInPost(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.linkedinPosts() });
+    },
+  });
+}
+
+export function useLinkedInBatches() {
+  return useQuery({
+    queryKey: qk.linkedinBatches(),
+    queryFn: getLinkedInBatches,
+  });
+}
+
+export function useRetryLinkedInBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (batchId: string) => retryLinkedInBatch(batchId),
+    onSuccess: (_, batchId) => {
+      qc.invalidateQueries({ queryKey: qk.linkedinBatch(batchId) });
+      qc.invalidateQueries({ queryKey: qk.linkedinBatches() });
     },
   });
 }
