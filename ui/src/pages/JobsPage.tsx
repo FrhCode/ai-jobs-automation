@@ -1,7 +1,7 @@
 import { JobsTable } from "@/components/JobsTable";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { useDeleteJobs, useJobs } from "@/hooks/useJobs";
+import { useDeleteJobs, useJobs, useUpdateJob } from "@/hooks/useJobs";
 import {
   APP_STATUS,
   APP_STATUS_LABEL,
@@ -18,7 +18,7 @@ export function JobsPage() {
   const [filters, setFilters] = useState<JobsQuery>(
     jobsQuerySchema.parse({
       recommendation: searchParams.get("recommendation") || undefined,
-      appStatus: searchParams.get("appStatus") || undefined,
+      appStatus: searchParams.get("appStatus") || 'not_applied',
       q: searchParams.get("q") || undefined,
       sort: searchParams.get("sort") || "score",
       dir: searchParams.get("dir") || "desc",
@@ -31,6 +31,7 @@ export function JobsPage() {
 
   const { data, isLoading, isError } = useJobs(filters);
   const deleteJobs = useDeleteJobs();
+  const updateJob = useUpdateJob();
 
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -147,6 +148,7 @@ export function JobsPage() {
       <JobsTable
         jobs={data?.jobs ?? []}
         onDelete={(ids) => deleteJobs.mutate({ ids })}
+        onUpdateJob={(id, data) => updateJob.mutate({ id, ...data })}
       />
 
       {data && data.total > filters.limit && (

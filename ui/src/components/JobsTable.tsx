@@ -9,14 +9,16 @@ import {
   type Column,
   type Row,
 } from '@tanstack/react-table';
-import { ArrowUpDown, ArrowUp, ArrowDown, Trash2, ExternalLink, Briefcase } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Trash2, ExternalLink, Briefcase, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Job } from '@/types/data';
 import { RECOMMENDATION_COLOR, APP_STATUS_LABEL, APP_STATUS_COLOR, APP_STATUS } from '@/shared/constants';
+import type { UpdateJob } from '@/shared/schemas';
 
 interface JobsTableProps {
   readonly jobs: Job[];
   readonly onDelete: (ids: number[]) => void;
+  readonly onUpdateJob?: (id: number, data: UpdateJob) => void;
 }
 
 function scoreColorClass(score: number) {
@@ -37,7 +39,7 @@ function SortIcon({ sorted }: { readonly sorted: string | boolean }) {
   return <ArrowUpDown className="w-3 h-3 text-text-muted" />;
 }
 
-export function JobsTable({ jobs, onDelete }: JobsTableProps) {
+export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
   const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([{ id: 'score', desc: true }]);
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
@@ -150,15 +152,28 @@ export function JobsTable({ jobs, onDelete }: JobsTableProps) {
       id: 'actions',
       header: '',
       cell: ({ row }: { row: Row<Job> }) => (
-        <a
-          href={row.original.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-text-muted hover:text-cyan transition-colors"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+        <div className="flex items-center gap-2">
+          <button
+            className="text-text-muted hover:text-rose transition-colors disabled:opacity-50"
+            title="Mark as Not Interested"
+            disabled={row.original.appStatus === 'not_interested' || !onUpdateJob}
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpdateJob?.(row.original.id, { appStatus: 'not_interested' });
+            }}
+          >
+            <Ban className="w-3.5 h-3.5" />
+          </button>
+          <a
+            href={row.original.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-text-muted hover:text-cyan transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
       ),
     },
   ];
