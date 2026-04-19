@@ -7,4 +7,5 @@ export const qk = {
   resume: () => ['resume'] as const,
   settings: () => ['settings'] as const,
   stats: () => ['stats'] as const,
+  openrouterCredits: () => ['openrouter', 'credits'] as const,
 };

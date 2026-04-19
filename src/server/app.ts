@@ -8,6 +8,7 @@ import { resumeRoutes } from './routes/resume';
 import { settingsRoutes } from './routes/settings';
 import { statsRoutes } from './routes/stats';
 import { cronRoutes } from './routes/cron';
+import { openrouterRoutes } from './routes/openrouter';
 
 function getCorsOrigin() {
   if (process.env.NODE_ENV === 'development') return 'http://localhost:3000';
@@ -37,7 +38,8 @@ export const app = new Elysia()
   .use(resumeRoutes)
   .use(settingsRoutes)
   .use(statsRoutes)
-  .use(cronRoutes);
+  .use(cronRoutes)
+  .use(openrouterRoutes);
 
 if (process.env.NODE_ENV === 'production') {
   app.use(staticPlugin({

@@ -81,6 +81,16 @@ export function SettingsForm({
             />
           </Field>
           <Field>
+            <FieldLabel htmlFor="management-key">OpenRouter Management Key</FieldLabel>
+            <Input
+              id="management-key"
+              value={form.open_router_management_key ?? ""}
+              onChange={(e) => update("open_router_management_key", e.target.value)}
+              placeholder="sk-or-…"
+              className="font-mono"
+            />
+          </Field>
+          <Field>
             <FieldLabel htmlFor="ai-model">Model</FieldLabel>
             <Input
               id="ai-model"

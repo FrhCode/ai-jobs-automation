@@ -57,3 +57,10 @@ export interface StatsData {
   scoreHistogram: { bucket: string; count: number }[];
   topCompanies: { company: string; count: number }[];
 }
+
+export interface OpenRouterCredits {
+  totalCredits: number;
+  totalUsage: number;
+  remaining: number;
+  error?: string;
+}

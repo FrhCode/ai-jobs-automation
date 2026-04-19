@@ -55,7 +55,16 @@ export function useThemeProvider(): ThemeContextValue {
   };
 
   const toggleTheme = () => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+    setThemeState((prev) => {
+      const resolved = prev === 'system' ? getSystemTheme() : prev;
+      const next = resolved === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('theme', next);
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   };
 
   return { theme, resolvedTheme, setTheme, toggleTheme };

@@ -33,6 +33,7 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
   const logout = useLogout();
   const { resolvedTheme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [themeCooldown, setThemeCooldown] = useState(false);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -143,8 +144,13 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
         {/* Bottom actions */}
         <div className="p-3 border-t border-border-subtle space-y-1">
           <button
-            onClick={toggleTheme}
-            className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer"
+            disabled={themeCooldown}
+            onClick={() => {
+              setThemeCooldown(true);
+              toggleTheme();
+              setTimeout(() => setThemeCooldown(false), 400);
+            }}
+            className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {resolvedTheme === 'dark' ? (
               <>

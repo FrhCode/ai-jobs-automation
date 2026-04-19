@@ -10,6 +10,9 @@ function maskValue(key: string, value: string): string {
   if (key === "openrouter_api_key" && value.startsWith("sk-or-")) {
     return "sk-or-***";
   }
+  if (key === "open_router_management_key" && value.startsWith("sk-or-")) {
+    return "sk-or-***";
+  }
   if (key === "app_password_hash") {
     return "***";
   }
@@ -18,6 +21,9 @@ function maskValue(key: string, value: string): string {
 
 function isMaskedValue(key: string, value: string): boolean {
   if (key === "openrouter_api_key" && value === "sk-or-***") {
+    return true;
+  }
+  if (key === "open_router_management_key" && value === "sk-or-***") {
     return true;
   }
   if (key === "app_password_hash" && value === "***") {

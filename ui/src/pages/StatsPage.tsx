@@ -1,11 +1,13 @@
 import { StatsCards, ScoreHistogram, TopCompanies } from '@/components/StatsCards';
 import { useStats } from '@/hooks/useStats';
+import { useOpenRouterCredits } from '@/hooks/useOpenRouterCredits';
 import { BarChart3 } from 'lucide-react';
 
 export function StatsPage() {
-  const { data: stats, isLoading } = useStats();
+  const { data: stats, isLoading: statsLoading } = useStats();
+  const { data: credits, isLoading: creditsLoading } = useOpenRouterCredits();
 
-  if (isLoading) return (
+  if (statsLoading) return (
     <div className="flex items-center justify-center h-64 gap-3 text-text-secondary">
       <div className="w-5 h-5 border-2 border-cyan border-t-transparent rounded-full animate-spin" />
       Loading stats...
@@ -27,7 +29,7 @@ export function StatsPage() {
       <p className="text-sm text-text-secondary -mt-4">
         Overview of your job search pipeline.
       </p>
-      <StatsCards stats={stats} />
+      <StatsCards stats={stats} credits={credits} creditsLoading={creditsLoading} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ScoreHistogram histogram={stats.scoreHistogram} />
         <TopCompanies companies={stats.topCompanies} />

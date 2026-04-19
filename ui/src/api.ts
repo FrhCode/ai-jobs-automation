@@ -1,5 +1,5 @@
 import type { JobsQuery, UpdateJob, CreateQuestionInput, UpdateQuestionInput } from '@/shared/schemas';
-import type { Job, JobQuestion, QueueItem, ResumeData, StatsData } from '@/types/data';
+import type { Job, JobQuestion, QueueItem, ResumeData, StatsData, OpenRouterCredits } from '@/types/data';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -194,4 +194,9 @@ export async function triggerCron() {
 // Stats
 export async function getStats() {
   return request<StatsData>('/api/stats');
+}
+
+// OpenRouter
+export async function getOpenRouterCredits() {
+  return request<OpenRouterCredits>('/api/openrouter/credits');
 }

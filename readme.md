@@ -135,7 +135,12 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.0.3**
+**1.0.5**
+
+- Implement Seeing Open Router Creadit
+- Enhange Toogle Theme Button
+
+**1.0.4**
 
 - Implement Dark Mode
 - Enhange QNA in Job Detail

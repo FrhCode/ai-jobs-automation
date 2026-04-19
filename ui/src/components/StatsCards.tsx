@@ -1,9 +1,11 @@
-import { Briefcase, CheckCircle2, AlertCircle, XCircle, Star, TrendingUp, Building2 } from 'lucide-react';
+import { Briefcase, CheckCircle2, AlertCircle, XCircle, Star, TrendingUp, Building2, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { StatsData } from '@/types/data';
+import type { StatsData, OpenRouterCredits } from '@/types/data';
 
 interface StatsCardsProps {
   readonly stats: StatsData;
+  readonly credits?: OpenRouterCredits;
+  readonly creditsLoading?: boolean;
 }
 
 function scoreBarColor(count: number, max: number): string {
@@ -13,7 +15,7 @@ function scoreBarColor(count: number, max: number): string {
   return 'bg-cyan/35';
 }
 
-export function StatsCards({ stats }: StatsCardsProps) {
+export function StatsCards({ stats, credits, creditsLoading }: StatsCardsProps) {
   const cards = [
     {
       title: 'Total Jobs',
@@ -59,7 +61,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
       {cards.map((card, i) => {
         const Icon = card.icon;
         return (
@@ -81,6 +83,33 @@ export function StatsCards({ stats }: StatsCardsProps) {
           </div>
         );
       })}
+      <div
+        className="glass-card rounded-xl p-5 animate-fade-in-up"
+        style={{ animationDelay: `${cards.length * 55}ms` }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-xs text-text-muted uppercase tracking-wider font-mono">OpenRouter Credits</span>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-border-subtle bg-cyan-dim">
+            <CreditCard className="w-4 h-4 text-cyan" />
+          </div>
+        </div>
+        {creditsLoading ? (
+          <div className="text-3xl font-bold font-heading tabular-nums text-text-primary">—</div>
+        ) : !credits || credits.error ? (
+          <div className="text-lg font-semibold text-text-secondary">{credits?.error || 'Unavailable'}</div>
+        ) : (
+          <>
+            <div className="text-3xl font-bold font-heading tabular-nums text-cyan">
+              ${credits.remaining.toFixed(2)}
+            </div>
+            <div className="mt-2 flex items-center gap-3 text-xs text-text-muted">
+              <span>Total: ${credits.totalCredits.toFixed(2)}</span>
+              <span className="w-1 h-1 rounded-full bg-border-subtle" />
+              <span>Used: ${credits.totalUsage.toFixed(2)}</span>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -144,3 +173,4 @@ export function TopCompanies({ companies }: { readonly companies: StatsData['top
     </div>
   );
 }
+
