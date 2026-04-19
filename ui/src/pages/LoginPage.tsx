@@ -89,7 +89,7 @@ export function LoginPage() {
           <form
             id="login-form"
             onSubmit={form.handleSubmit((data) => {
-              login.mutate(data, { onSuccess: () => navigate('/jobs') });
+              login.mutate(data, { onSuccess: () => navigate('/jobs?appStatus=not_applied&sort=score&dir=desc&page=1&limit=50') });
             })}
             className="space-y-5"
           >

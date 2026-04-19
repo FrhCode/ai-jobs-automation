@@ -20,11 +20,11 @@ import { useTheme } from '@/hooks/useTheme';
 import { useState, useEffect } from 'react';
 
 const navItems = [
-  { path: '/jobs', label: 'Jobs', icon: Briefcase },
+  { path: '/jobs', label: 'Jobs', icon: Briefcase, defaultSearch: 'appStatus=not_applied&sort=score&dir=desc&page=1&limit=50' },
   { path: '/add', label: 'Add URLs', icon: PlusCircle },
   { path: '/queue', label: 'Queue', icon: ListOrdered },
   { path: '/resume', label: 'Resume', icon: FileText },
-  { path: '/linkedin-feed', label: 'LinkedIn Feed', icon: Rss },
+  { path: '/linkedin-feed', label: 'LinkedIn Feed', icon: Rss, defaultSearch: 'status=not_applied' },
   { path: '/stats', label: 'Stats', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -120,10 +120,11 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = location.pathname.startsWith(item.path);
+            const to = item.defaultSearch ? `${item.path}?${item.defaultSearch}` : item.path;
             return (
               <Link
                 key={item.path}
-                to={item.path}
+                to={to}
                 className={cn(
                   'nav-item flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                   active

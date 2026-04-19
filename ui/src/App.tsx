@@ -52,7 +52,7 @@ function AppRoutes() {
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/linkedin-feed" element={<LinkedInFeedPage />} />
                 <Route path="/linkedin-feed/:id" element={<LinkedInPostDetailPage />} />
-                <Route path="/" element={<Navigate to="/jobs" replace />} />
+                <Route path="/" element={<Navigate to="/jobs?appStatus=not_applied&sort=score&dir=desc&page=1&limit=50" replace />} />
               </Routes>
             </Layout>
           </RequireAuth>
