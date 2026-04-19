@@ -8,9 +8,15 @@ import {
   BarChart3,
   LogOut,
   Sparkles,
+  Menu,
+  X,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLogout } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   { path: '/jobs', label: 'Jobs', icon: Briefcase },
@@ -25,13 +31,65 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const logout = useLogout();
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  // Prevent body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarOpen]);
 
   return (
     <div className="flex min-h-screen bg-bg">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile header */}
+      <header className="fixed top-0 left-0 right-0 h-14 bg-surface border-b border-border-subtle flex items-center justify-between px-4 z-30 lg:hidden">
+        <Link to="/jobs" className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-cyan flex items-center justify-center shrink-0">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="font-heading text-[15px] font-semibold text-text-primary leading-none tracking-tight">
+            JobSearch
+          </span>
+        </Link>
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      </header>
+
       {/* Sidebar */}
-      <aside className="w-60 bg-surface border-r border-border-subtle flex flex-col fixed h-screen z-40">
+      <aside
+        className={cn(
+          'w-60 bg-surface border-r border-border-subtle flex flex-col fixed h-screen z-50 transition-transform duration-300 ease-in-out',
+          'lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
         {/* Brand */}
-        <div className="px-5 py-5 border-b border-border-subtle">
+        <div className="px-5 py-5 border-b border-border-subtle flex items-center justify-between">
           <Link to="/jobs" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-lg bg-cyan flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 text-white" />
@@ -45,6 +103,13 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
               </p>
             </div>
           </Link>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer"
+            aria-label="Close menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Nav */}
@@ -75,10 +140,26 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="p-3 border-t border-border-subtle">
+        {/* Bottom actions */}
+        <div className="p-3 border-t border-border-subtle space-y-1">
           <button
-            className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-rose hover:bg-rose-glow transition-all"
+            onClick={toggleTheme}
+            className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer"
+          >
+            {resolvedTheme === 'dark' ? (
+              <>
+                <Sun className="w-4 h-4 shrink-0" />
+                Light Mode
+              </>
+            ) : (
+              <>
+                <Moon className="w-4 h-4 shrink-0" />
+                Dark Mode
+              </>
+            )}
+          </button>
+          <button
+            className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-rose hover:bg-rose-glow transition-all cursor-pointer"
             onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/login') })}
           >
             <LogOut className="w-4 h-4 shrink-0" />
@@ -88,8 +169,10 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 ml-60 min-h-screen">
-        <div className="max-w-6xl mx-auto px-8 py-8">{children}</div>
+      <main className="flex-1 lg:ml-60 min-h-screen pt-14 lg:pt-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+          {children}
+        </div>
       </main>
     </div>
   );

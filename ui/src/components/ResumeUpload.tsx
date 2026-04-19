@@ -83,7 +83,7 @@ export function ResumeUpload({
             </div>
             <button
               onClick={onDelete}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-rose hover:bg-rose-glow transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-rose hover:bg-rose-glow transition-all cursor-pointer"
               title="Delete resume"
             >
               <Trash2 className="w-4 h-4" />

@@ -61,7 +61,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-1.5 text-xs text-text-muted hover:text-cyan transition-colors"
+      className="flex items-center gap-1.5 text-xs text-text-muted hover:text-cyan transition-colors cursor-pointer"
     >
       {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
       {copied ? 'Copied' : 'Copy'}
@@ -88,9 +88,9 @@ function QuestionCard({
   };
 
   return (
-    <div className="glass-card rounded-xl p-4 space-y-3">
+    <div className="rounded-lg p-4 space-y-3 bg-surface-elevated/40">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {isEditing ? (
             <Textarea
               value={draftQuestion}
@@ -102,12 +102,12 @@ function QuestionCard({
             <h4 className="text-sm font-semibold text-text-primary leading-relaxed">{q.question}</h4>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           {isEditing ? (
             <>
               <button
                 onClick={handleSave}
-                className="p-1.5 rounded-md hover:bg-surface-elevated text-emerald transition-colors"
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-emerald transition-colors cursor-pointer"
                 title="Save"
               >
                 <Save className="w-3.5 h-3.5" />
@@ -118,7 +118,7 @@ function QuestionCard({
                   setDraftAnswer(q.answer ?? '');
                   setIsEditing(false);
                 }}
-                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors"
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer"
                 title="Cancel"
               >
                 <X className="w-3.5 h-3.5" />
@@ -128,14 +128,14 @@ function QuestionCard({
             <>
               <button
                 onClick={() => setIsEditing(true)}
-                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors"
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer"
                 title="Edit"
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => onDelete(q.id)}
-                className="p-1.5 rounded-md hover:bg-surface-elevated text-rose transition-colors"
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-rose transition-colors cursor-pointer"
                 title="Delete"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -159,7 +159,7 @@ function QuestionCard({
             value={q.answer}
             readOnly
             rows={6}
-            className="text-sm leading-relaxed resize-y bg-surface/50"
+            className="text-sm leading-relaxed resize-y bg-transparent border-transparent focus-visible:ring-0 focus-visible:border-transparent"
           />
           <div className="absolute top-2 right-2">
             <CopyButton text={q.answer} />
@@ -190,9 +190,11 @@ export function JobDetailPanel({
   const [notesDraft, setNotesDraft] = useState(job.appNotes ?? '');
   const [newQuestion, setNewQuestion] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [creatingQuestionText, setCreatingQuestionText] = useState('');
 
   const handleAddQuestion = () => {
     if (!newQuestion.trim() || !onCreateQuestion) return;
+    setCreatingQuestionText(newQuestion.trim());
     onCreateQuestion(newQuestion.trim());
     setNewQuestion('');
     setShowAddForm(false);
@@ -204,7 +206,7 @@ export function JobDetailPanel({
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate('/jobs')}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-all"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -213,10 +215,10 @@ export function JobDetailPanel({
 
       {/* Title Block */}
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-text-primary font-heading leading-tight">
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary font-heading leading-tight">
           {job.title}
         </h1>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-text-secondary">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary">
           <span className="font-medium text-text-primary">{job.company}</span>
           {job.location && (
             <span className="flex items-center gap-1">
@@ -250,7 +252,7 @@ export function JobDetailPanel({
               style={{ width: `${score}%` }}
             />
           </div>
-          <span className={cn('text-3xl font-bold font-heading tabular-nums', scoreTextColor(score))}>
+          <span className={cn('text-2xl sm:text-3xl font-bold font-heading tabular-nums', scoreTextColor(score))}>
             {job.score ?? '—'}
           </span>
         </div>
@@ -325,7 +327,7 @@ export function JobDetailPanel({
             <button
               onClick={onGenerateCoverLetter}
               disabled={isGeneratingCoverLetter}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
             >
               {isGeneratingCoverLetter ? (
                 <>
@@ -352,7 +354,7 @@ export function JobDetailPanel({
           </h3>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer"
           >
             {showAddForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
             {showAddForm ? 'Cancel' : 'Add Question'}
@@ -372,7 +374,7 @@ export function JobDetailPanel({
               <button
                 onClick={handleAddQuestion}
                 disabled={!newQuestion.trim() || isCreatingQuestion}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 {isCreatingQuestion ? (
                   <>
@@ -395,7 +397,7 @@ export function JobDetailPanel({
             <Loader2 className="w-4 h-4 animate-spin" />
             <span className="text-sm">Loading questions...</span>
           </div>
-        ) : questions.length === 0 ? (
+        ) : questions.length === 0 && !isCreatingQuestion ? (
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
             <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center">
               <MessageCircleQuestion className="w-4 h-4 text-text-muted" />
@@ -407,6 +409,15 @@ export function JobDetailPanel({
           </div>
         ) : (
           <div className="space-y-3">
+            {isCreatingQuestion && (
+              <div className="rounded-lg p-4 space-y-3 bg-cyan/5 border border-cyan/15">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan" />
+                  <span className="text-sm font-medium text-cyan">Generating answer...</span>
+                </div>
+                <p className="text-sm text-text-secondary leading-relaxed">{creatingQuestionText}</p>
+              </div>
+            )}
             {questions.map((q) => (
               <QuestionCard
                 key={q.id}
@@ -459,10 +470,10 @@ export function JobDetailPanel({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-3 pt-1">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
         <button
           onClick={onReanalyze}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-cyan hover:border-cyan transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-cyan hover:border-cyan transition-all cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Re-analyze
@@ -471,7 +482,7 @@ export function JobDetailPanel({
           href={job.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="ml-auto flex items-center gap-1.5 text-sm font-medium text-cyan hover:underline"
+          className="sm:ml-auto flex items-center justify-center gap-1.5 text-sm font-medium text-cyan hover:underline"
         >
           View Original
           <ExternalLink className="w-3.5 h-3.5" />

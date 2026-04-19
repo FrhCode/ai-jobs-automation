@@ -16,19 +16,19 @@ export function ResumePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-cyan" />
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">Resume</h1>
         </div>
         {resume && (
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-cyan hover:border-cyan hover:bg-cyan-dim transition-all">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-cyan hover:border-cyan hover:bg-cyan-dim transition-all self-start cursor-pointer">
             <RefreshCw className="w-3.5 h-3.5" />
             Re-analyze All Jobs
           </button>
         )}
       </div>
-      <p className="text-sm text-text-secondary -mt-4">
+      <p className="text-sm text-text-secondary -mt-2 sm:-mt-4">
         Upload your resume PDF. It will be used to score and analyze job matches.
       </p>
       <ResumeUpload

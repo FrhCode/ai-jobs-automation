@@ -80,8 +80,8 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
       header: 'Position',
       cell: ({ row }: { row: Row<Job> }) => (
         <div>
-          <div className="font-medium text-text-primary">{row.original.title}</div>
-          <div className="text-xs text-text-secondary flex items-center gap-1 mt-0.5">
+          <div className="font-medium text-text-primary whitespace-nowrap">{row.original.title}</div>
+          <div className="text-xs text-text-secondary flex items-center gap-1 mt-0.5 whitespace-nowrap">
             {row.original.company}
             {row.original.location && (
               <>
@@ -97,7 +97,7 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
       accessorKey: 'score',
       header: ({ column }: { column: Column<Job> }) => (
         <button
-          className="flex items-center gap-1.5 hover:text-cyan transition-colors"
+          className="flex items-center gap-1.5 hover:text-cyan transition-colors cursor-pointer"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
           Match
@@ -109,7 +109,7 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
         if (score == null) return <span className="text-text-muted font-mono">—</span>;
         return (
           <div className="flex items-center gap-3">
-            <div className="w-20 h-1.5 score-bar">
+            <div className="w-16 sm:w-20 h-1.5 score-bar">
               <div className={cn('score-bar-fill', scoreColorClass(score))} style={{ width: `${score}%` }} />
             </div>
             <span className={cn('text-sm font-mono font-semibold', scoreTextClass(score))}>{score}</span>
@@ -124,7 +124,7 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
         const rec = row.original.recommendation;
         if (!rec) return <span className="text-text-muted">—</span>;
         return (
-          <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', RECOMMENDATION_COLOR[rec as 'Apply' | 'Consider' | 'Skip'])}>
+          <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap', RECOMMENDATION_COLOR[rec as 'Apply' | 'Consider' | 'Skip'])}>
             {rec}
           </span>
         );
@@ -134,7 +134,7 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
       accessorKey: 'appStatus',
       header: 'Status',
       cell: ({ row }: { row: Row<Job> }) => (
-        <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', APP_STATUS_COLOR[row.original.appStatus as typeof APP_STATUS[number]])}>
+        <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap', APP_STATUS_COLOR[row.original.appStatus as typeof APP_STATUS[number]])}>
           {APP_STATUS_LABEL[row.original.appStatus as typeof APP_STATUS[number]]}
         </span>
       ),
@@ -143,7 +143,7 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
       accessorKey: 'salary',
       header: 'Compensation',
       cell: ({ row }: { row: Row<Job> }) => (
-        <span className="text-sm text-text-secondary font-mono">
+        <span className="text-sm text-text-secondary font-mono whitespace-nowrap">
           {row.original.salary ?? '—'}
         </span>
       ),
@@ -154,7 +154,7 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
       cell: ({ row }: { row: Row<Job> }) => (
         <div className="flex items-center gap-2">
           <button
-            className="text-text-muted hover:text-rose transition-colors disabled:opacity-50"
+            className="text-text-muted hover:text-rose transition-colors disabled:opacity-50 cursor-pointer"
             title="Mark as Not Interested"
             disabled={row.original.appStatus === 'not_interested' || !onUpdateJob}
             onClick={(e) => {
@@ -168,7 +168,7 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
             href={row.original.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-text-muted hover:text-cyan transition-colors"
+            className="text-text-muted hover:text-cyan transition-colors cursor-pointer"
             onClick={(e) => e.stopPropagation()}
           >
             <ExternalLink className="w-3.5 h-3.5" />
@@ -202,7 +202,7 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
             <span className="text-cyan font-mono font-semibold">{selectedIds.length}</span> selected
           </span>
           <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-glow text-rose border border-rose/15 hover:bg-rose/10 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-glow text-rose border border-rose/15 hover:bg-rose/10 transition-all cursor-pointer"
             onClick={() => { onDelete(selectedIds); setRowSelection({}); }}
           >
             <Trash2 className="w-3 h-3" />
@@ -211,45 +211,47 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
         </div>
       )}
 
-      <div className="glass-card rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-border-subtle bg-surface-elevated">
-                {hg.headers.map((h) => (
-                  <th key={h.id} className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">
-                    {flexRender(h.column.columnDef.header, h.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className="border-b border-border-subtle/60 table-row-hover cursor-pointer"
-                onClick={() => navigate(`/jobs/${row.original.id}`)}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-4 py-3.5">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      <div className="glass-card rounded-xl overflow-hidden -mx-4 sm:mx-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead>
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="border-b border-border-subtle bg-surface-elevated">
+                  {hg.headers.map((h) => (
+                    <th key={h.id} className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider whitespace-nowrap">
+                      {flexRender(h.column.columnDef.header, h.getContext())}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className="border-b border-border-subtle/60 table-row-hover cursor-pointer"
+                  onClick={() => navigate(`/jobs/${row.original.id}`)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3.5">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {jobs.length === 0 && (
+                <tr>
+                  <td colSpan={columns.length} className="px-4 py-16 text-center text-text-muted">
+                    <div className="flex flex-col items-center gap-2">
+                      <Briefcase className="w-7 h-7 text-text-muted/40" />
+                      <p className="text-sm">No jobs found matching your criteria.</p>
+                    </div>
                   </td>
-                ))}
-              </tr>
-            ))}
-            {jobs.length === 0 && (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-16 text-center text-text-muted">
-                  <div className="flex flex-col items-center gap-2">
-                    <Briefcase className="w-7 h-7 text-text-muted/40" />
-                    <p className="text-sm">No jobs found matching your criteria.</p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

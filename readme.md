@@ -137,6 +137,11 @@ bun run db:studio     # Open Drizzle Studio
 
 **1.0.3**
 
+- Implement Dark Mode
+- Enhange QNA in Job Detail
+
+**1.0.3**
+
 - Add job questions feature: AI-generated screening questions per job with answer management in job detail panel
 
 **1.0.2**

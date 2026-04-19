@@ -77,13 +77,13 @@ export function JobsPage() {
     data?.jobs?.filter((j) => j.recommendation === "Apply").length ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 lg:space-y-6">
       {/* Header */}
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Briefcase className="w-5 h-5 text-text-muted" />
-            <h1 className="font-heading text-2xl font-semibold text-text-primary tracking-tight">
+            <h1 className="font-heading text-xl sm:text-2xl font-semibold text-text-primary tracking-tight">
               Jobs
             </h1>
           </div>
@@ -91,8 +91,8 @@ export function JobsPage() {
             {data?.total ?? 0} opportunities tracked
           </p>
         </div>
-        <div className="text-right">
-          <div className="font-heading text-3xl font-bold text-cyan tabular-nums">
+        <div className="text-left sm:text-right">
+          <div className="font-heading text-2xl sm:text-3xl font-bold text-cyan tabular-nums">
             {applyCount}
           </div>
           <p className="text-xs text-text-muted uppercase tracking-wider mt-0.5">
@@ -102,24 +102,24 @@ export function JobsPage() {
       </div>
 
       {/* Filters */}
-      <div className="glass-card rounded-xl p-3.5 flex flex-wrap items-center gap-2.5">
-        <div className="relative flex-1 min-w-55">
+      <div className="glass-card rounded-xl p-3.5 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
           <Input
             placeholder="Search title, company, location…"
-            className="pl-9"
+            className="pl-9 w-full"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-text-muted" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <SlidersHorizontal className="w-3.5 h-3.5 text-text-muted hidden sm:block" />
           <Select
             value={filters.recommendation ?? ""}
             onChange={(e) =>
               updateFilter("recommendation", e.target.value || undefined)
             }
-            className="min-w-35"
+            className="min-w-0 flex-1 sm:min-w-35"
           >
             <option value="">All Recommendations</option>
             {RECOMMENDATION.map((r) => (
@@ -133,7 +133,7 @@ export function JobsPage() {
             onChange={(e) =>
               updateFilter("appStatus", e.target.value || undefined)
             }
-            className="min-w-35"
+            className="min-w-0 flex-1 sm:min-w-35"
           >
             <option value="">All Statuses</option>
             {APP_STATUS.map((s) => (
@@ -154,7 +154,7 @@ export function JobsPage() {
       {data && data.total > filters.limit && (
         <div className="flex items-center justify-center gap-3">
           <button
-            className="px-4 py-2 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-text-primary hover:border-border-hover transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-text-primary hover:border-border-hover transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             disabled={filters.page <= 1}
             onClick={() => updateFilter("page", String(filters.page - 1))}
           >
@@ -168,7 +168,7 @@ export function JobsPage() {
             of {Math.ceil(data.total / filters.limit)}
           </span>
           <button
-            className="px-4 py-2 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-text-primary hover:border-border-hover transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-text-primary hover:border-border-hover transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             disabled={filters.page >= Math.ceil(data.total / filters.limit)}
             onClick={() => updateFilter("page", String(filters.page + 1))}
           >

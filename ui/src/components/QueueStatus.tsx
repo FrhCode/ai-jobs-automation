@@ -20,8 +20,8 @@ export function QueueStatus({ items, isProcessing, onRetry, onClear, onProcess }
   return (
     <div className="space-y-5">
       {/* Stats bar */}
-      <div className="glass-card rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-5">
+      <div className="glass-card rounded-xl p-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-5">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-text-muted" />
             <span className="text-sm text-text-secondary">
@@ -50,10 +50,11 @@ export function QueueStatus({ items, isProcessing, onRetry, onClear, onProcess }
         <div className="flex items-center gap-2">
           <button
             onClick={() => onClear(['done', 'failed'])}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-border-subtle text-text-secondary hover:text-rose hover:border-rose/40 hover:bg-rose-glow transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-border-subtle text-text-secondary hover:text-rose hover:border-rose/40 hover:bg-rose-glow transition-all cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Clear Done/Failed
+            <span className="hidden sm:inline">Clear Done/Failed</span>
+            <span className="sm:hidden">Clear</span>
           </button>
           <button
             onClick={onProcess}
@@ -75,13 +76,13 @@ export function QueueStatus({ items, isProcessing, onRetry, onClear, onProcess }
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between p-4 hover:bg-surface-elevated/60 transition-colors"
+              className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-surface-elevated/60 transition-colors gap-3"
             >
-              <div className="flex-1 min-w-0 mr-4">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm text-text-primary truncate font-mono">{item.url}</p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <span className="text-xs text-text-muted font-mono uppercase">{item.source}</span>
-                  <span className="text-text-muted/50">·</span>
+                  <span className="text-text-muted/50 hidden sm:inline">·</span>
                   <span className="text-xs text-text-muted font-mono">
                     Attempt {item.attempts}/{item.maxAttempts}
                   </span>
@@ -90,14 +91,14 @@ export function QueueStatus({ items, isProcessing, onRetry, onClear, onProcess }
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
                 <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', QUEUE_STATUS_COLOR[item.status as typeof QUEUE_STATUS[number]])}>
                   {item.status}
                 </span>
                 {item.status === 'failed' && (
                   <button
                     onClick={() => onRetry(item.id)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-cyan hover:bg-cyan-dim transition-all"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-cyan hover:bg-cyan-dim transition-all cursor-pointer"
                     title="Retry"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />

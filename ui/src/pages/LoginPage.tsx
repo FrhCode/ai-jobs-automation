@@ -25,7 +25,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left panel — brand / editorial */}
-      <div className="hidden lg:flex w-[46%] bg-cyan flex-col justify-between p-12 relative overflow-hidden">
+      <div className="hidden lg:flex w-[46%] bg-[#4338CA] flex-col justify-between p-12 relative overflow-hidden">
         {/* subtle dot texture */}
         <div
           className="absolute inset-0 opacity-10"
@@ -71,14 +71,14 @@ export function LoginPage() {
         <div className="w-full max-w-sm">
           {/* Mobile brand */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-cyan flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[#4338CA] flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <span className="font-heading text-lg font-semibold text-text-primary">JobSearch AI</span>
           </div>
 
           <div className="mb-8">
-            <h1 className="font-heading text-3xl font-semibold text-text-primary tracking-tight">
+            <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-text-primary tracking-tight">
               Welcome back
             </h1>
             <p className="text-sm text-text-secondary mt-2">

@@ -105,7 +105,7 @@ export function SettingsForm({
         </div>
         <div className="p-5 space-y-4">
           {/* Toggle */}
-          <div className="flex items-center justify-between py-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
             <div>
               <p className="text-sm font-medium text-text-primary">
                 Enable scheduled scraping
@@ -122,7 +122,7 @@ export function SettingsForm({
                 update("cron_enabled", cronEnabled ? "false" : "true")
               }
               className={cn(
-                "w-10 h-6 rounded-full transition-colors duration-200 relative shrink-0",
+                "w-10 h-6 rounded-full transition-colors duration-200 relative shrink-0 self-start sm:self-auto cursor-pointer",
                 cronEnabled ? "bg-cyan" : "bg-border-subtle",
               )}
             >
@@ -195,7 +195,7 @@ export function SettingsForm({
               type="button"
               onClick={onTriggerCron}
               disabled={isTriggering}
-              className="btn-secondary px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isTriggering ? (
                 <>
@@ -226,7 +226,7 @@ export function SettingsForm({
           onClick={() => onSave(form)}
           disabled={isPending}
           className={cn(
-            "px-5 py-2.5 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200",
+            "px-5 py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200",
             isSuccess ? "bg-emerald text-white" : "btn-primary",
           )}
         >
