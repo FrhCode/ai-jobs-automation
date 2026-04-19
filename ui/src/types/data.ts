@@ -40,6 +40,15 @@ export interface ResumeData {
   uploadedAt: string;
 }
 
+export interface JobQuestion {
+  id: number;
+  jobId: number;
+  question: string;
+  answer: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StatsData {
   total: number;
   byRecommendation: Record<string, number>;

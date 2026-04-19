@@ -25,7 +25,18 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+export const createQuestionSchema = z.object({
+  question: z.string().min(1).max(10000),
+});
+
+export const updateQuestionSchema = z.object({
+  question: z.string().min(1).max(10000).optional(),
+  answer: z.string().max(20000).optional(),
+});
+
 export type JobsQuery = z.infer<typeof jobsQuerySchema>;
 export type UpdateJob = z.infer<typeof updateJobSchema>;
 export type EnqueueInput = z.infer<typeof enqueueSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type CreateQuestionInput = z.infer<typeof createQuestionSchema>;
+export type UpdateQuestionInput = z.infer<typeof updateQuestionSchema>;

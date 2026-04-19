@@ -1,11 +1,28 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, ExternalLink, MapPin, DollarSign, FileText, Copy, Check, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  RefreshCw,
+  ExternalLink,
+  MapPin,
+  DollarSign,
+  FileText,
+  Copy,
+  Check,
+  Sparkles,
+  MessageCircleQuestion,
+  Plus,
+  Trash2,
+  Pencil,
+  Save,
+  X,
+  Loader2,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Field, FieldLabel } from '@/components/ui/field';
-import type { Job } from '@/types/data';
+import type { Job, JobQuestion } from '@/types/data';
 import { APP_STATUS, APP_STATUS_LABEL, RECOMMENDATION_COLOR } from '@/shared/constants';
 
 interface JobDetailPanelProps {
@@ -14,6 +31,12 @@ interface JobDetailPanelProps {
   readonly onReanalyze: () => void;
   readonly onGenerateCoverLetter?: () => void;
   readonly isGeneratingCoverLetter?: boolean;
+  readonly questions?: JobQuestion[];
+  readonly questionsLoading?: boolean;
+  readonly onCreateQuestion?: (question: string) => void;
+  readonly onUpdateQuestion?: (questionId: number, data: { question?: string; answer?: string }) => void;
+  readonly onDeleteQuestion?: (questionId: number) => void;
+  readonly isCreatingQuestion?: boolean;
 }
 
 function scoreTextColor(score: number) {
@@ -28,17 +51,151 @@ function scoreBgColor(score: number) {
   return 'bg-rose';
 }
 
-export function JobDetailPanel({ job, onUpdate, onReanalyze, onGenerateCoverLetter, isGeneratingCoverLetter }: JobDetailPanelProps) {
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1.5 text-xs text-text-muted hover:text-cyan transition-colors"
+    >
+      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  );
+}
+
+function QuestionCard({
+  q,
+  onUpdate,
+  onDelete,
+}: {
+  q: JobQuestion;
+  onUpdate: (id: number, data: { question?: string; answer?: string }) => void;
+  onDelete: (id: number) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftQuestion, setDraftQuestion] = useState(q.question);
+  const [draftAnswer, setDraftAnswer] = useState(q.answer ?? '');
+
+  const handleSave = () => {
+    onUpdate(q.id, { question: draftQuestion, answer: draftAnswer });
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="glass-card rounded-xl p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          {isEditing ? (
+            <Textarea
+              value={draftQuestion}
+              onChange={(e) => setDraftQuestion(e.target.value)}
+              rows={2}
+              className="text-sm font-medium resize-y"
+            />
+          ) : (
+            <h4 className="text-sm font-semibold text-text-primary leading-relaxed">{q.question}</h4>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {isEditing ? (
+            <>
+              <button
+                onClick={handleSave}
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-emerald transition-colors"
+                title="Save"
+              >
+                <Save className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => {
+                  setDraftQuestion(q.question);
+                  setDraftAnswer(q.answer ?? '');
+                  setIsEditing(false);
+                }}
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors"
+                title="Cancel"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors"
+                title="Edit"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onDelete(q.id)}
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-rose transition-colors"
+                title="Delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {isEditing ? (
+        <Textarea
+          value={draftAnswer}
+          onChange={(e) => setDraftAnswer(e.target.value)}
+          rows={6}
+          className="text-sm leading-relaxed resize-y"
+          placeholder="Edit the answer..."
+        />
+      ) : q.answer ? (
+        <div className="relative">
+          <Textarea
+            value={q.answer}
+            readOnly
+            rows={6}
+            className="text-sm leading-relaxed resize-y bg-surface/50"
+          />
+          <div className="absolute top-2 right-2">
+            <CopyButton text={q.answer} />
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-text-muted italic">No answer yet.</p>
+      )}
+    </div>
+  );
+}
+
+export function JobDetailPanel({
+  job,
+  onUpdate,
+  onReanalyze,
+  onGenerateCoverLetter,
+  isGeneratingCoverLetter,
+  questions = [],
+  questionsLoading = false,
+  onCreateQuestion,
+  onUpdateQuestion,
+  onDeleteQuestion,
+  isCreatingQuestion = false,
+}: JobDetailPanelProps) {
   const navigate = useNavigate();
   const score = job.score ?? 0;
   const [notesDraft, setNotesDraft] = useState(job.appNotes ?? '');
-  const [copied, setCopied] = useState(false);
+  const [newQuestion, setNewQuestion] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
 
-  const handleCopy = async () => {
-    if (!job.coverLetter) return;
-    await navigator.clipboard.writeText(job.coverLetter);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleAddQuestion = () => {
+    if (!newQuestion.trim() || !onCreateQuestion) return;
+    onCreateQuestion(newQuestion.trim());
+    setNewQuestion('');
+    setShowAddForm(false);
   };
 
   return (
@@ -144,15 +301,7 @@ export function JobDetailPanel({ job, onUpdate, onReanalyze, onGenerateCoverLett
             <FileText className="w-3.5 h-3.5" />
             Cover Letter
           </h3>
-          {job.coverLetter && (
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1.5 text-xs text-text-muted hover:text-cyan transition-colors"
-            >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? 'Copied' : 'Copy'}
-            </button>
-          )}
+          {job.coverLetter && <CopyButton text={job.coverLetter} />}
         </div>
 
         {job.coverLetter ? (
@@ -190,6 +339,82 @@ export function JobDetailPanel({ job, onUpdate, onReanalyze, onGenerateCoverLett
                 </>
               )}
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* Application Questions */}
+      <div className="glass-card rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted flex items-center gap-2">
+            <MessageCircleQuestion className="w-3.5 h-3.5" />
+            Application Questions
+          </h3>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors"
+          >
+            {showAddForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+            {showAddForm ? 'Cancel' : 'Add Question'}
+          </button>
+        </div>
+
+        {showAddForm && (
+          <div className="space-y-3">
+            <Textarea
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+              rows={4}
+              placeholder="Paste the application question here..."
+              className="text-sm resize-y"
+            />
+            <div className="flex justify-end">
+              <button
+                onClick={handleAddQuestion}
+                disabled={!newQuestion.trim() || isCreatingQuestion}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {isCreatingQuestion ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Generating answer...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Generate Answer
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {questionsLoading ? (
+          <div className="flex items-center justify-center py-8 gap-3 text-text-secondary">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Loading questions...</span>
+          </div>
+        ) : questions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+            <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center">
+              <MessageCircleQuestion className="w-4 h-4 text-text-muted" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-text-secondary">No questions yet</p>
+              <p className="text-xs text-text-muted">Paste application questions to get AI-generated answers</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {questions.map((q) => (
+              <QuestionCard
+                key={q.id}
+                q={q}
+                onUpdate={onUpdateQuestion ?? (() => {})}
+                onDelete={onDeleteQuestion ?? (() => {})}
+              />
+            ))}
           </div>
         )}
       </div>

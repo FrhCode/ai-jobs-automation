@@ -55,6 +55,15 @@ export const sessions = pgTable('sessions', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
 
+export const jobQuestions = pgTable('job_questions', {
+  id: serial('id').primaryKey(),
+  jobId: integer('job_id').notNull(),
+  question: text('question').notNull(),
+  answer: text('answer'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type SelectJob = typeof jobs.$inferSelect;
 export type InsertJob = typeof jobs.$inferInsert;
 export type SelectQueue = typeof queue.$inferSelect;
@@ -63,3 +72,5 @@ export type SelectResume = typeof resume.$inferSelect;
 export type InsertResume = typeof resume.$inferInsert;
 export type SelectSettings = typeof settings.$inferSelect;
 export type SelectSession = typeof sessions.$inferSelect;
+export type SelectJobQuestion = typeof jobQuestions.$inferSelect;
+export type InsertJobQuestion = typeof jobQuestions.$inferInsert;

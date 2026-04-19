@@ -8,8 +8,12 @@ import {
   enqueueJobs,
   reanalyzeJob,
   generateCoverLetter,
+  getJobQuestions,
+  createJobQuestion,
+  updateJobQuestion,
+  deleteJobQuestion,
 } from '@/api';
-import type { JobsQuery, UpdateJob } from '@/shared/schemas';
+import type { JobsQuery, UpdateJob, CreateQuestionInput, UpdateQuestionInput } from '@/shared/schemas';
 
 
 export function useJobs(filters: JobsQuery) {
@@ -69,6 +73,45 @@ export function useGenerateCoverLetter() {
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: qk.jobs() });
       qc.invalidateQueries({ queryKey: qk.job(variables.id) });
+    },
+  });
+}
+
+export function useJobQuestions(jobId: number) {
+  return useQuery({
+    queryKey: qk.jobQuestions(jobId),
+    queryFn: () => getJobQuestions(jobId),
+    enabled: jobId > 0,
+  });
+}
+
+export function useCreateJobQuestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: CreateQuestionInput & { id: number }) => createJobQuestion(id, body),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: qk.jobQuestions(variables.id) });
+    },
+  });
+}
+
+export function useUpdateJobQuestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, questionId, ...body }: UpdateQuestionInput & { id: number; questionId: number }) =>
+      updateJobQuestion(id, questionId, body),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: qk.jobQuestions(variables.id) });
+    },
+  });
+}
+
+export function useDeleteJobQuestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, questionId }: { id: number; questionId: number }) => deleteJobQuestion(id, questionId),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: qk.jobQuestions(variables.id) });
     },
   });
 }

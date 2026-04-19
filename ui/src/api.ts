@@ -1,5 +1,5 @@
-import type { JobsQuery, UpdateJob } from '@/shared/schemas';
-import type { Job, QueueItem, ResumeData, StatsData } from '@/types/data';
+import type { JobsQuery, UpdateJob, CreateQuestionInput, UpdateQuestionInput } from '@/shared/schemas';
+import type { Job, JobQuestion, QueueItem, ResumeData, StatsData } from '@/types/data';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -81,6 +81,30 @@ export async function reanalyzeJob(id: number) {
 export async function generateCoverLetter(id: number) {
   return request<Job>(`/api/jobs/${id}/cover-letter`, {
     method: 'POST',
+  });
+}
+
+export async function getJobQuestions(id: number) {
+  return request<JobQuestion[]>(`/api/jobs/${id}/questions`);
+}
+
+export async function createJobQuestion(id: number, body: CreateQuestionInput) {
+  return request<JobQuestion>(`/api/jobs/${id}/questions`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateJobQuestion(id: number, questionId: number, body: UpdateQuestionInput) {
+  return request<JobQuestion>(`/api/jobs/${id}/questions/${questionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteJobQuestion(id: number, questionId: number) {
+  return request<{ deleted: boolean }>(`/api/jobs/${id}/questions/${questionId}`, {
+    method: 'DELETE',
   });
 }
 

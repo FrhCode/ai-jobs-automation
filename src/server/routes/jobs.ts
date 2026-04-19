@@ -2,16 +2,18 @@ import Elysia from 'elysia';
 import { z } from 'zod';
 import { eq, and, ilike, desc, asc, inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { jobs, queue, resume, settings } from '../db/schema';
+import { jobs, queue, resume, settings, jobQuestions } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
 import {
   jobsQuerySchema,
   updateJobSchema,
   enqueueSchema,
   deleteJobsSchema,
+  createQuestionSchema,
+  updateQuestionSchema,
 } from '../../shared/schemas/jobs';
 import { processQueue } from '../lib/jobQueue';
-import { generateCoverLetter } from '../lib/aiAnalyzer';
+import { generateCoverLetter, generateAnswer } from '../lib/aiAnalyzer';
 
 export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
   .use(authPlugin)
@@ -165,4 +167,85 @@ export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
   }, {
     requireAuth: true,
     body: deleteJobsSchema,
+  })
+
+  .get('/:id/questions', async ({ params, set }) => {
+    const [job] = await db.select().from(jobs).where(eq(jobs.id, params.id)).limit(1);
+    if (!job) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+    const rows = await db.select().from(jobQuestions).where(eq(jobQuestions.jobId, params.id)).orderBy(jobQuestions.createdAt);
+    return rows;
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .post('/:id/questions', async ({ params, body, set }) => {
+    const [job] = await db.select().from(jobs).where(eq(jobs.id, params.id)).limit(1);
+    if (!job) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    const [resumeRow] = await db.select().from(resume).limit(1);
+    if (!resumeRow) {
+      set.status = 400;
+      return { message: 'No resume uploaded. Please upload a resume first.' };
+    }
+
+    const [apiKeyRow, modelRow] = await Promise.all([
+      db.select().from(settings).where(eq(settings.key, 'openrouter_api_key')).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_model')).limit(1),
+    ]);
+    const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+
+    if (!apiKey) {
+      set.status = 400;
+      return { message: 'No OpenRouter API key configured.' };
+    }
+
+    const answer = await generateAnswer(body.question, job, resumeRow.extractedText, apiKey, model);
+
+    const [inserted] = await db.insert(jobQuestions)
+      .values({ jobId: params.id, question: body.question, answer })
+      .returning();
+
+    return inserted;
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+    body: createQuestionSchema,
+  })
+
+  .patch('/:id/questions/:questionId', async ({ params, body, set }) => {
+    const updateData: Record<string, unknown> = { ...body, updatedAt: new Date() };
+    const [updated] = await db.update(jobQuestions)
+      .set(updateData)
+      .where(eq(jobQuestions.id, params.questionId))
+      .returning();
+    if (!updated) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+    return updated;
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive(), questionId: z.coerce.number().int().positive() }),
+    body: updateQuestionSchema,
+  })
+
+  .delete('/:id/questions/:questionId', async ({ params, set }) => {
+    const [existing] = await db.select().from(jobQuestions).where(eq(jobQuestions.id, params.questionId)).limit(1);
+    if (!existing) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+    await db.delete(jobQuestions).where(eq(jobQuestions.id, params.questionId));
+    return { deleted: true };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive(), questionId: z.coerce.number().int().positive() }),
   });

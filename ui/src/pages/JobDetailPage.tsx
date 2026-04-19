@@ -1,6 +1,15 @@
 import { useParams } from 'react-router-dom';
 import { JobDetailPanel } from '@/components/JobDetailPanel';
-import { useJob, useUpdateJob, useReanalyzeJob, useGenerateCoverLetter } from '@/hooks/useJobs';
+import {
+  useJob,
+  useUpdateJob,
+  useReanalyzeJob,
+  useGenerateCoverLetter,
+  useJobQuestions,
+  useCreateJobQuestion,
+  useUpdateJobQuestion,
+  useDeleteJobQuestion,
+} from '@/hooks/useJobs';
 import type { AppStatus } from '@/shared/constants';
 
 export function JobDetailPage() {
@@ -10,6 +19,10 @@ export function JobDetailPage() {
   const updateJob = useUpdateJob();
   const reanalyze = useReanalyzeJob();
   const generateCoverLetter = useGenerateCoverLetter();
+  const { data: questions, isLoading: questionsLoading } = useJobQuestions(jobId);
+  const createQuestion = useCreateJobQuestion();
+  const updateQuestion = useUpdateJobQuestion();
+  const deleteQuestion = useDeleteJobQuestion();
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64 gap-3 text-text-secondary">
@@ -32,6 +45,12 @@ export function JobDetailPage() {
       onReanalyze={() => reanalyze.mutate({ id: jobId })}
       onGenerateCoverLetter={() => generateCoverLetter.mutate({ id: jobId })}
       isGeneratingCoverLetter={generateCoverLetter.isPending}
+      questions={questions ?? []}
+      questionsLoading={questionsLoading}
+      onCreateQuestion={(question) => createQuestion.mutate({ id: jobId, question })}
+      onUpdateQuestion={(questionId, data) => updateQuestion.mutate({ id: jobId, questionId, ...data })}
+      onDeleteQuestion={(questionId) => deleteQuestion.mutate({ id: jobId, questionId })}
+      isCreatingQuestion={createQuestion.isPending}
     />
   );
 }

@@ -208,6 +208,87 @@ export interface AnalyzeResult {
   scrapeStatus: string;
 }
 
+function createAnswerPrompt(
+  question: string,
+  job: {
+    title: string | null;
+    company: string | null;
+    location: string | null;
+    descriptionSummary: string | null;
+    matchedSkills: string[] | null;
+    missingSkills: string[] | null;
+  },
+  resumeText: string
+) {
+  return `You are an expert career coach who helps job applicants answer application questions convincingly and authentically.
+
+## Candidate Resume
+${resumeText.slice(0, 4000)}
+
+## Job Details
+- Title: ${job.title || 'Unknown'}
+- Company: ${job.company || 'Unknown'}
+- Location: ${job.location || 'Unknown'}
+- Role Summary: ${job.descriptionSummary || 'Not available'}
+
+## Matched Skills
+${(job.matchedSkills ?? []).join(', ') || 'None listed'}
+
+## Missing Skills
+${(job.missingSkills ?? []).join(', ') || 'None listed'}
+
+## Application Question
+${question}
+
+## Task
+Write a strong, authentic answer to this job application question. The answer should:
+1. Be specific and concrete — avoid generic fluff
+2. Draw from the candidate's actual resume experience where possible
+3. Be concise but compelling (typically 100-300 words unless the question clearly asks for more)
+4. Match the tone expected for the role (professional, enthusiastic, thoughtful)
+5. Address any missing skills honestly but frame them as growth opportunities
+6. Return ONLY the answer text, nothing else — no markdown headers, no code blocks, no explanation`;
+}
+
+export async function generateAnswer(
+  question: string,
+  job: {
+    title: string | null;
+    company: string | null;
+    location: string | null;
+    descriptionSummary: string | null;
+    matchedSkills: string[] | null;
+    missingSkills: string[] | null;
+  },
+  resumeText: string,
+  apiKey: string,
+  model: string
+): Promise<string> {
+  const client = createClient(apiKey);
+  const prompt = createAnswerPrompt(question, job, resumeText);
+
+  let responseText = '';
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Answer generation timed out after 60s')), 60000)
+    );
+    const completion = await Promise.race([
+      client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+      }),
+      timeout,
+    ]);
+    responseText = completion.choices[0]?.message?.content || '';
+  } catch (err) {
+    console.log(`  [AI] Answer error: ${(err as Error).message}`);
+    throw err;
+  }
+
+  return responseText.trim();
+}
+
 export async function analyzeJob(
   scrapeResult: AnalyzeInput,
   resumeText: string,
