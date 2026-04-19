@@ -31,6 +31,8 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    ports:
+      - "8021:5432"
     environment:
       POSTGRES_DB: job_search
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

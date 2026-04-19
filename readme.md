@@ -1,3 +1,7 @@
+**1.0.2**
+
+- Expose PostgreSQL port `8021` in Docker Compose for external access
+
 **1.0.1**
 
 - Default `/jobs` filter to `not_applied` status
