@@ -5,8 +5,11 @@ Automate job evaluation against your resume using AI. This application scrapes j
 ## Features
 
 - **Job Scraping** — Automatically fetch job listings from configurable sources
+- **LinkedIn Feed Import** — Upload LinkedIn post HTML files to analyze job opportunities
 - **Resume Parsing** — Extract text from PDF resumes for AI analysis
 - **AI-Powered Evaluation** — Analyze job fit using OpenRouter AI models
+- **AI Contact Extraction** — Auto-detect apply URLs and recruiter emails from LinkedIn posts
+- **AI Email Generation** — One-click generate professional outreach emails with subject & body
 - **Job Management** — Track jobs with statuses: `not_applied`, `applied`, `not_interested`
 - **Screening Questions** — AI-generated screening questions per job with answer management
 - **Queue System** — Background processing for scraping and analysis tasks
@@ -134,6 +137,14 @@ bun run db:studio     # Open Drizzle Studio
 ```
 
 ## Changelog
+
+**1.1.0**
+
+- **LinkedIn Feed Import** — Upload LinkedIn post HTML files to analyze job opportunities
+- **AI Contact Extraction** — Automatically extracts `applyUrl` and `contactEmail` from LinkedIn post content using AI
+- **AI Email Generation** — Generate professional application emails (subject + body) tailored to the job and your resume
+- **Apply Method Indicators** — Visual badges on feed cards showing which posts have apply links or contact emails
+- **Quick Apply Actions** — Copy links, open URLs in new tab, generate & copy emails, or open your mail client directly
 
 **1.0.6**
 
