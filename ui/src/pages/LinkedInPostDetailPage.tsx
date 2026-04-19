@@ -1,54 +1,58 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Badge } from "@/components/ui/badge";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  useLinkedInPost,
-  useUpdateLinkedInPost,
+  useCreateLinkedInPostQuestion,
+  useDeleteLinkedInPost,
+  useDeleteLinkedInPostQuestion,
   useGenerateLinkedInCoverLetter,
   useGenerateLinkedInEmail,
+  useLinkedInPost,
   useLinkedInPostQuestions,
-  useCreateLinkedInPostQuestion,
+  useUpdateLinkedInPost,
   useUpdateLinkedInPostQuestion,
-  useDeleteLinkedInPostQuestion,
-  useDeleteLinkedInPost,
-} from '@/hooks/useLinkedInFeed';
-import { extractUrls, extractEmails } from '@/lib/extractContact';
-import type { JobQuestion } from '@/types/data';
-import { APP_STATUS, APP_STATUS_LABEL, RECOMMENDATION_COLOR } from '@/shared/constants';
-import type { AppStatus } from '@/shared/constants';
+} from "@/hooks/useLinkedInFeed";
+import { extractEmails, extractUrls } from "@/lib/extractContact";
+import { cn } from "@/lib/utils";
+import type { AppStatus } from "@/shared/constants";
 import {
-  ArrowLeft,
-  FileText,
-  Copy,
-  Check,
-  Sparkles,
-  MessageCircleQuestion,
-  Plus,
-  Trash2,
-  Pencil,
-  Save,
-  X,
-  Loader2,
+  APP_STATUS,
+  APP_STATUS_LABEL,
+  RECOMMENDATION_COLOR,
+} from "@/shared/constants";
+import type { JobQuestion } from "@/types/data";
+import {
   AlertCircle,
-  Link as LinkIcon,
-  Mail,
+  ArrowLeft,
+  Check,
+  Copy,
   ExternalLink,
-} from 'lucide-react';
+  FileText,
+  Link as LinkIcon,
+  Loader2,
+  Mail,
+  MessageCircleQuestion,
+  Pencil,
+  Plus,
+  Save,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 function scoreTextColor(score: number) {
-  if (score >= 80) return 'text-emerald';
-  if (score >= 60) return 'text-amber';
-  return 'text-rose';
+  if (score >= 80) return "text-emerald";
+  if (score >= 60) return "text-amber";
+  return "text-rose";
 }
 
 function scoreBgColor(score: number) {
-  if (score >= 80) return 'bg-emerald';
-  if (score >= 60) return 'bg-amber';
-  return 'bg-rose';
+  if (score >= 80) return "bg-emerald";
+  if (score >= 60) return "bg-amber";
+  return "bg-rose";
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -63,8 +67,12 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       className="flex items-center gap-1.5 text-xs text-text-muted hover:text-cyan transition-colors cursor-pointer"
     >
-      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? (
+        <Check className="w-3.5 h-3.5" />
+      ) : (
+        <Copy className="w-3.5 h-3.5" />
+      )}
+      {copied ? "Copied" : "Copy"}
     </button>
   );
 }
@@ -80,7 +88,7 @@ function QuestionCard({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState(q.question);
-  const [draftAnswer, setDraftAnswer] = useState(q.answer ?? '');
+  const [draftAnswer, setDraftAnswer] = useState(q.answer ?? "");
 
   const handleSave = () => {
     onUpdate(q.id, { question: draftQuestion, answer: draftAnswer });
@@ -99,25 +107,47 @@ function QuestionCard({
               className="text-sm font-medium resize-y"
             />
           ) : (
-            <h4 className="text-sm font-semibold text-text-primary leading-relaxed">{q.question}</h4>
+            <h4 className="text-sm font-semibold text-text-primary leading-relaxed">
+              {q.question}
+            </h4>
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {isEditing ? (
             <>
-              <button onClick={handleSave} className="p-1.5 rounded-md hover:bg-surface-elevated text-emerald transition-colors cursor-pointer" title="Save">
+              <button
+                onClick={handleSave}
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-emerald transition-colors cursor-pointer"
+                title="Save"
+              >
                 <Save className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => { setDraftQuestion(q.question); setDraftAnswer(q.answer ?? ''); setIsEditing(false); }} className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer" title="Cancel">
+              <button
+                onClick={() => {
+                  setDraftQuestion(q.question);
+                  setDraftAnswer(q.answer ?? "");
+                  setIsEditing(false);
+                }}
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer"
+                title="Cancel"
+              >
                 <X className="w-3.5 h-3.5" />
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => setIsEditing(true)} className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer" title="Edit">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer"
+                title="Edit"
+              >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => onDelete(q.id)} className="p-1.5 rounded-md hover:bg-surface-elevated text-rose transition-colors cursor-pointer" title="Delete">
+              <button
+                onClick={() => onDelete(q.id)}
+                className="p-1.5 rounded-md hover:bg-surface-elevated text-rose transition-colors cursor-pointer"
+                title="Delete"
+              >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </>
@@ -126,10 +156,21 @@ function QuestionCard({
       </div>
 
       {isEditing ? (
-        <Textarea value={draftAnswer} onChange={(e) => setDraftAnswer(e.target.value)} rows={6} className="text-sm leading-relaxed resize-y" placeholder="Edit the answer..." />
+        <Textarea
+          value={draftAnswer}
+          onChange={(e) => setDraftAnswer(e.target.value)}
+          rows={6}
+          className="text-sm leading-relaxed resize-y"
+          placeholder="Edit the answer..."
+        />
       ) : q.answer ? (
         <div className="space-y-2">
-          <Textarea value={q.answer} readOnly rows={6} className="text-sm leading-relaxed resize-y bg-transparent border-transparent focus-visible:ring-0 focus-visible:border-transparent" />
+          <Textarea
+            value={q.answer}
+            readOnly
+            rows={6}
+            className="text-sm leading-relaxed resize-y bg-transparent border-transparent focus-visible:ring-0 focus-visible:border-transparent"
+          />
           <div className="flex justify-end">
             <CopyButton text={q.answer} />
           </div>
@@ -149,21 +190,22 @@ export function LinkedInPostDetailPage() {
   const { data: post, isLoading } = useLinkedInPost(postId);
   const updatePost = useUpdateLinkedInPost();
   const generateCoverLetter = useGenerateLinkedInCoverLetter();
-  const { data: questionsData, isLoading: questionsLoading } = useLinkedInPostQuestions(postId);
+  const { data: questionsData, isLoading: questionsLoading } =
+    useLinkedInPostQuestions(postId);
   const createQuestion = useCreateLinkedInPostQuestion();
   const updateQuestion = useUpdateLinkedInPostQuestion();
   const deleteQuestion = useDeleteLinkedInPostQuestion();
   const deletePost = useDeleteLinkedInPost();
 
-  const [notesDraft, setNotesDraft] = useState(post?.appNotes ?? '');
-  const [newQuestion, setNewQuestion] = useState('');
+  const [notesDraft, setNotesDraft] = useState(post?.appNotes ?? "");
+  const [newQuestion, setNewQuestion] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [creatingQuestionText, setCreatingQuestionText] = useState('');
+  const [creatingQuestionText, setCreatingQuestionText] = useState("");
 
   // Email generation state
   const generateEmail = useGenerateLinkedInEmail();
-  const [emailSubject, setEmailSubject] = useState(post?.emailSubject ?? '');
-  const [emailBody, setEmailBody] = useState(post?.emailBody ?? '');
+  const [emailSubject, setEmailSubject] = useState(post?.emailSubject ?? "");
+  const [emailBody, setEmailBody] = useState(post?.emailBody ?? "");
 
   // Sync email from post data when it loads (e.g. after refresh)
   useEffect(() => {
@@ -178,7 +220,7 @@ export function LinkedInPostDetailPage() {
   }, [post?.emailSubject, post?.emailBody]);
 
   // Sync notes draft when post loads
-  if (post && notesDraft !== (post.appNotes ?? '') && !updatePost.isPending) {
+  if (post && notesDraft !== (post.appNotes ?? "") && !updatePost.isPending) {
     // Only update if not currently editing
   }
 
@@ -186,14 +228,14 @@ export function LinkedInPostDetailPage() {
     if (!newQuestion.trim()) return;
     setCreatingQuestionText(newQuestion.trim());
     createQuestion.mutate({ id: postId, question: newQuestion.trim() });
-    setNewQuestion('');
+    setNewQuestion("");
     setShowAddForm(false);
   };
 
   const handleDeletePost = () => {
-    if (confirm('Delete this LinkedIn post?')) {
+    if (confirm("Delete this LinkedIn post?")) {
       deletePost.mutate(postId, {
-        onSuccess: () => navigate('/linkedin-feed'),
+        onSuccess: () => navigate("/linkedin-feed"),
       });
     }
   };
@@ -229,24 +271,32 @@ export function LinkedInPostDetailPage() {
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <span className="text-xs font-mono uppercase tracking-widest text-text-muted">LinkedIn Post</span>
+        <span className="text-xs font-mono uppercase tracking-widest text-text-muted">
+          LinkedIn Post
+        </span>
       </div>
 
       {/* Author & Content */}
       <div className="glass-card rounded-xl p-5 space-y-4">
         <div>
           <h1 className="text-lg font-bold text-text-primary">
-            {post.authorName || 'Unknown author'}
+            {post.authorName || "Unknown author"}
           </h1>
           {post.authorHeadline && (
-            <p className="text-sm text-text-muted mt-0.5">{post.authorHeadline}</p>
+            <p className="text-sm text-text-muted mt-0.5">
+              {post.authorHeadline}
+            </p>
           )}
         </div>
 
         {post.matchedKeywords && post.matchedKeywords.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {post.matchedKeywords.map((kw) => (
-              <Badge key={kw} variant="outline" className="text-cyan border-cyan/20 bg-cyan/5">
+              <Badge
+                key={kw}
+                variant="outline"
+                className="text-cyan border-cyan/20 bg-cyan/5"
+              >
                 {kw}
               </Badge>
             ))}
@@ -271,17 +321,32 @@ export function LinkedInPostDetailPage() {
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-text-secondary">Match Score</span>
             {post.recommendation && (
-              <span className={cn('inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold', RECOMMENDATION_COLOR[post.recommendation as 'Apply' | 'Consider' | 'Skip'])}>
+              <span
+                className={cn(
+                  "inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold",
+                  RECOMMENDATION_COLOR[
+                    post.recommendation as "Apply" | "Consider" | "Skip"
+                  ],
+                )}
+              >
                 {post.recommendation}
               </span>
             )}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex-1 h-2 score-bar">
-              <div className={cn('score-bar-fill', scoreBgColor(score))} style={{ width: `${score}%` }} />
+              <div
+                className={cn("score-bar-fill", scoreBgColor(score))}
+                style={{ width: `${score}%` }}
+              />
             </div>
-            <span className={cn('text-2xl sm:text-3xl font-bold font-heading tabular-nums', scoreTextColor(score))}>
-              {post.score ?? '—'}
+            <span
+              className={cn(
+                "text-2xl sm:text-3xl font-bold font-heading tabular-nums",
+                scoreTextColor(score),
+              )}
+            >
+              {post.score ?? "—"}
             </span>
           </div>
         </div>
@@ -290,15 +355,23 @@ export function LinkedInPostDetailPage() {
       {/* AI Summary */}
       {post.summary && (
         <div className="glass-card rounded-xl p-5">
-          <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted mb-3">AI Summary</h3>
-          <p className="text-sm text-text-secondary leading-relaxed">{post.summary}</p>
+          <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted mb-3">
+            AI Summary
+          </h3>
+          <p className="text-sm text-text-secondary leading-relaxed">
+            {post.summary}
+          </p>
         </div>
       )}
 
       {/* Apply Method — Link or Email */}
       {(() => {
-        const urls = post.applyUrl ? [post.applyUrl] : extractUrls(post.postContent);
-        const emails = post.contactEmail ? [post.contactEmail] : extractEmails(post.postContent);
+        const urls = post.applyUrl
+          ? [post.applyUrl]
+          : extractUrls(post.postContent);
+        const emails = post.contactEmail
+          ? [post.contactEmail]
+          : extractEmails(post.postContent);
         const hasLinks = urls.length > 0;
         const hasEmails = emails.length > 0;
 
@@ -310,7 +383,9 @@ export function LinkedInPostDetailPage() {
               <div className="glass-card rounded-xl p-5 space-y-3">
                 <div className="flex items-center gap-2">
                   <LinkIcon className="w-3.5 h-3.5 text-cyan" />
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">Apply Link</h3>
+                  <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">
+                    Apply Link
+                  </h3>
                 </div>
                 <div className="space-y-2">
                   {urls.map((url) => (
@@ -345,15 +420,23 @@ export function LinkedInPostDetailPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Mail className="w-3.5 h-3.5 text-cyan" />
-                    <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">Apply via Email</h3>
+                    <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">
+                      Apply via Email
+                    </h3>
                   </div>
-                  {emailSubject && <CopyButton text={`Subject: ${emailSubject}\n\n${emailBody}`} />}
+                  {emailSubject && (
+                    <CopyButton
+                      text={`Subject: ${emailSubject}\n\n${emailBody}`}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-text-muted">To:</span>
-                    <span className="text-text-primary font-mono">{emails[0]}</span>
+                    <span className="text-text-primary font-mono">
+                      {emails[0]}
+                    </span>
                   </div>
 
                   {!emailSubject && !generateEmail.isPending && (
@@ -383,7 +466,9 @@ export function LinkedInPostDetailPage() {
                   {emailSubject && (
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs text-text-muted mb-1 block">Subject</label>
+                        <label className="text-xs text-text-muted mb-1 block">
+                          Subject
+                        </label>
                         <input
                           type="text"
                           value={emailSubject}
@@ -392,7 +477,9 @@ export function LinkedInPostDetailPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-text-muted mb-1 block">Body</label>
+                        <label className="text-xs text-text-muted mb-1 block">
+                          Body
+                        </label>
                         <Textarea
                           value={emailBody}
                           onChange={(e) => setEmailBody(e.target.value)}
@@ -405,6 +492,7 @@ export function LinkedInPostDetailPage() {
                           href={`mailto:${emails[0]}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
                           className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 transition-all"
                           onClick={(e) => e.stopPropagation()}
+                          target="_blank"
                         >
                           <Mail className="w-3.5 h-3.5" />
                           Open in Mail Client
@@ -424,18 +512,32 @@ export function LinkedInPostDetailPage() {
       {post.aiAnalyzed && post.isJob !== false && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="glass-card rounded-xl p-4">
-            <h3 className="text-xs font-mono uppercase tracking-widest text-emerald mb-3">Matched Skills</h3>
+            <h3 className="text-xs font-mono uppercase tracking-widest text-emerald mb-3">
+              Matched Skills
+            </h3>
             <div className="flex flex-wrap gap-1.5">
               {post.matchedSkills?.map((s) => (
-                <span key={s} className="px-2 py-0.5 rounded text-xs font-mono badge-emerald">{s}</span>
+                <span
+                  key={s}
+                  className="px-2 py-0.5 rounded text-xs font-mono badge-emerald"
+                >
+                  {s}
+                </span>
               )) ?? <span className="text-sm text-text-muted">None</span>}
             </div>
           </div>
           <div className="glass-card rounded-xl p-4">
-            <h3 className="text-xs font-mono uppercase tracking-widest text-rose mb-3">Missing Skills</h3>
+            <h3 className="text-xs font-mono uppercase tracking-widest text-rose mb-3">
+              Missing Skills
+            </h3>
             <div className="flex flex-wrap gap-1.5">
               {post.missingSkills?.map((s) => (
-                <span key={s} className="px-2 py-0.5 rounded text-xs font-mono badge-rose">{s}</span>
+                <span
+                  key={s}
+                  className="px-2 py-0.5 rounded text-xs font-mono badge-rose"
+                >
+                  {s}
+                </span>
               )) ?? <span className="text-sm text-text-muted">None</span>}
             </div>
           </div>
@@ -454,7 +556,12 @@ export function LinkedInPostDetailPage() {
 
         {post.coverLetter ? (
           <div className="relative">
-            <Textarea value={post.coverLetter} readOnly rows={12} className="text-sm leading-relaxed resize-y" />
+            <Textarea
+              value={post.coverLetter}
+              readOnly
+              rows={12}
+              className="text-sm leading-relaxed resize-y"
+            />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
@@ -463,7 +570,9 @@ export function LinkedInPostDetailPage() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-text-secondary">No cover letter yet</p>
-              <p className="text-xs text-text-muted">Generate one with AI based on your resume</p>
+              <p className="text-xs text-text-muted">
+                Generate one with AI based on your resume
+              </p>
             </div>
             <button
               onClick={() => generateCoverLetter.mutate(postId)}
@@ -497,8 +606,12 @@ export function LinkedInPostDetailPage() {
             onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer"
           >
-            {showAddForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-            {showAddForm ? 'Cancel' : 'Add Question'}
+            {showAddForm ? (
+              <X className="w-3.5 h-3.5" />
+            ) : (
+              <Plus className="w-3.5 h-3.5" />
+            )}
+            {showAddForm ? "Cancel" : "Add Question"}
           </button>
         </div>
 
@@ -545,7 +658,9 @@ export function LinkedInPostDetailPage() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-text-secondary">No questions yet</p>
-              <p className="text-xs text-text-muted">Paste application questions to get AI-generated answers</p>
+              <p className="text-xs text-text-muted">
+                Paste application questions to get AI-generated answers
+              </p>
             </div>
           </div>
         ) : (
@@ -554,17 +669,25 @@ export function LinkedInPostDetailPage() {
               <div className="rounded-lg p-4 space-y-3 bg-cyan/5 border border-cyan/15">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan" />
-                  <span className="text-sm font-medium text-cyan">Generating answer...</span>
+                  <span className="text-sm font-medium text-cyan">
+                    Generating answer...
+                  </span>
                 </div>
-                <p className="text-sm text-text-secondary leading-relaxed">{creatingQuestionText}</p>
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  {creatingQuestionText}
+                </p>
               </div>
             )}
             {questions.map((q) => (
               <QuestionCard
                 key={q.id}
                 q={q}
-                onUpdate={(id, data) => updateQuestion.mutate({ id: postId, questionId: id, ...data })}
-                onDelete={(id) => deleteQuestion.mutate({ id: postId, questionId: id })}
+                onUpdate={(id, data) =>
+                  updateQuestion.mutate({ id: postId, questionId: id, ...data })
+                }
+                onDelete={(id) =>
+                  deleteQuestion.mutate({ id: postId, questionId: id })
+                }
               />
             ))}
           </div>
@@ -573,7 +696,9 @@ export function LinkedInPostDetailPage() {
 
       {/* Application Tracking */}
       <div className="glass-card rounded-xl p-5 space-y-4">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">Application Tracking</h3>
+        <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">
+          Application Tracking
+        </h3>
         <div className="space-y-4">
           <Field>
             <FieldLabel>Status</FieldLabel>
@@ -581,12 +706,17 @@ export function LinkedInPostDetailPage() {
               value={post.appStatus ?? undefined}
               onChange={(e) => {
                 const status = e.target.value as AppStatus;
-                const appliedAt = status === 'applied' && !post.appliedAt ? new Date().toISOString() : post.appliedAt;
+                const appliedAt =
+                  status === "applied" && !post.appliedAt
+                    ? new Date().toISOString()
+                    : post.appliedAt;
                 updatePost.mutate({ id: postId, appStatus: status, appliedAt });
               }}
             >
               {APP_STATUS.map((s) => (
-                <option key={s} value={s}>{APP_STATUS_LABEL[s]}</option>
+                <option key={s} value={s}>
+                  {APP_STATUS_LABEL[s]}
+                </option>
               ))}
             </Select>
           </Field>
@@ -596,7 +726,7 @@ export function LinkedInPostDetailPage() {
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
               onBlur={() => {
-                if (notesDraft !== (post.appNotes ?? '')) {
+                if (notesDraft !== (post.appNotes ?? "")) {
                   updatePost.mutate({ id: postId, appNotes: notesDraft });
                 }
               }}
