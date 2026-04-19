@@ -154,14 +154,14 @@ function QuestionCard({
           placeholder="Edit the answer..."
         />
       ) : q.answer ? (
-        <div className="relative">
+        <div className="space-y-2">
           <Textarea
             value={q.answer}
             readOnly
             rows={6}
             className="text-sm leading-relaxed resize-y bg-transparent border-transparent focus-visible:ring-0 focus-visible:border-transparent"
           />
-          <div className="absolute top-2 right-2">
+          <div className="flex justify-end">
             <CopyButton text={q.answer} />
           </div>
         </div>
