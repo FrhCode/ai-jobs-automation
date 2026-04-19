@@ -64,3 +64,34 @@ export interface OpenRouterCredits {
   remaining: number;
   error?: string;
 }
+
+export interface LinkedInPost {
+  id: number;
+  contentHash: string;
+  batchId: string | null;
+  authorName: string | null;
+  authorHeadline: string | null;
+  postContent: string;
+  rawHtml: string | null;
+  matchedKeywords: string[] | null;
+  isJob: boolean | null;
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  salary: string | null;
+  score: number | null;
+  matchedSkills: string[] | null;
+  missingSkills: string[] | null;
+  summary: string | null;
+  recommendation: string | null;
+  aiAnalyzed: boolean | null;
+  promotedToJobId: number | null;
+  appStatus: string | null;
+  appNotes: string | null;
+  coverLetter: string | null;
+  appliedAt: string | null;
+  applyUrl: string | null;
+  contactEmail: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -1,1 +1,0 @@
-ALTER TABLE "jobs" ADD COLUMN "cover_letter" text;

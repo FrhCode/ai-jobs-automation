@@ -5,22 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1776530748213,
-      "tag": "0000_sparkling_thor",
+      "when": 1776599243533,
+      "tag": "0000_superb_calypso",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1776573192738,
-      "tag": "0001_colorful_microbe",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1776600000000,
-      "tag": "0002_add_job_questions",
+      "when": 1776601730762,
+      "tag": "0001_brave_wolverine",
       "breakpoints": true
     }
   ]

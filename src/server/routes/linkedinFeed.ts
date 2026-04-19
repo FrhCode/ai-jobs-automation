@@ -1,0 +1,442 @@
+import Elysia from 'elysia';
+import { z } from 'zod';
+import { eq, inArray, desc, asc, sql, and, gte } from 'drizzle-orm';
+import { db } from '../db';
+import { linkedinPosts, resume, settings, linkedinPostQuestions } from '../db/schema';
+import { authPlugin } from '../plugins/auth';
+import { parseLinkedInHtml } from '../lib/linkedinParser';
+import { processLinkedInBatch } from '../lib/linkedinProcessor';
+import { generateCoverLetter, generateAnswer, generateApplicationEmail } from '../lib/aiAnalyzer';
+
+export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
+  .use(authPlugin)
+
+  .post('/linkedin-feed/parse', async ({ request, set }) => {
+    const formData = await request.formData();
+    const file = formData.get('file');
+    if (!file || !(file instanceof Blob)) {
+      set.status = 400;
+      return { message: 'No file uploaded' };
+    }
+
+    const rawFilename = (file as File).name || 'linkedin.html';
+    const isHtml = rawFilename.toLowerCase().endsWith('.html') || rawFilename.toLowerCase().endsWith('.htm');
+    if (!isHtml) {
+      set.status = 400;
+      return { message: 'Only HTML files are allowed' };
+    }
+
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+    const buffer = Buffer.from(await file.arrayBuffer());
+    if (buffer.length > MAX_FILE_SIZE) {
+      set.status = 413;
+      return { message: 'File too large. Max 10MB.' };
+    }
+
+    const html = buffer.toString('utf-8');
+    const parsedPosts = parseLinkedInHtml(html);
+
+    if (parsedPosts.length === 0) {
+      return { batchId: null, total: 0, matched: 0, status: 'empty', message: 'No posts found in HTML' };
+    }
+
+    // Filter by keywords
+    const keywordMatchedPosts = parsedPosts.filter((p) => p.matchedKeywords.length > 0);
+
+    if (keywordMatchedPosts.length === 0) {
+      return { batchId: null, total: parsedPosts.length, matched: 0, status: 'no_keywords', message: 'No job-related keywords found in any post' };
+    }
+
+    const batchId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    // Deduplication: check existing hashes
+    const hashes = keywordMatchedPosts.map((p) => p.contentHash);
+    const existingRows = await db
+      .select()
+      .from(linkedinPosts)
+      .where(inArray(linkedinPosts.contentHash, hashes));
+
+    const existingMap = new Map(existingRows.map((r) => [r.contentHash, r]));
+
+    // Get resume and AI settings
+    const [resumeRow, apiKeyRow, modelRow] = await Promise.all([
+      db.select().from(resume).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_api_key')).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_model')).limit(1),
+    ]);
+
+    const resumeText = resumeRow[0]?.extractedText || '';
+    const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+
+    // Trigger background processing (don't await)
+    processLinkedInBatch(keywordMatchedPosts, existingMap, {
+      batchId,
+      resumeText,
+      apiKey,
+      model,
+    }).catch((err) => {
+      console.error(`[LinkedIn Batch] ${batchId} failed:`, err);
+    });
+
+    return {
+      batchId,
+      total: parsedPosts.length,
+      matched: keywordMatchedPosts.length,
+      status: 'processing',
+      message: `Processing ${keywordMatchedPosts.length} keyword-matched posts in the background`,
+    };
+  }, {
+    requireAuth: true,
+  })
+
+  .get('/linkedin-feed/batch/:batchId', async ({ params }) => {
+    const { batchId } = params;
+
+    const countResult = await db
+      .select({ count: sql<number>`count(*)`, analyzed: sql<number>`sum(case when ${linkedinPosts.aiAnalyzed} = true then 1 else 0 end)` })
+      .from(linkedinPosts)
+      .where(eq(linkedinPosts.batchId, batchId));
+
+    const total = Number(countResult[0]?.count ?? 0);
+    const processed = Number(countResult[0]?.analyzed ?? 0);
+
+    const posts = await db
+      .select()
+      .from(linkedinPosts)
+      .where(eq(linkedinPosts.batchId, batchId))
+      .orderBy(desc(linkedinPosts.createdAt))
+      .limit(50);
+
+    return {
+      batchId,
+      total,
+      processed,
+      status: processed >= total ? 'completed' : 'processing',
+      posts,
+    };
+  }, {
+    requireAuth: true,
+    params: z.object({ batchId: z.string().min(1) }),
+  })
+
+  .get('/linkedin-posts', async ({ query }) => {
+    const page = Number(query.page ?? 1);
+    const limit = Number(query.limit ?? 20);
+    const sort = (query.sort as string) ?? 'createdAt';
+    const dir = (query.dir as string) ?? 'desc';
+    const isJobFilter = query.isJob === 'true' ? true : query.isJob === 'false' ? false : undefined;
+    const recommendationFilter = (query.recommendation as string) || undefined;
+    const minScore = query.minScore ? Number(query.minScore) : undefined;
+    const appStatusFilter = (query.appStatus as string) || undefined;
+
+    const conditions = [];
+    if (isJobFilter !== undefined) {
+      conditions.push(eq(linkedinPosts.isJob, isJobFilter));
+    }
+    if (recommendationFilter) {
+      conditions.push(eq(linkedinPosts.recommendation, recommendationFilter));
+    }
+    if (minScore !== undefined && !Number.isNaN(minScore)) {
+      conditions.push(gte(linkedinPosts.score, minScore));
+    }
+    if (appStatusFilter) {
+      conditions.push(eq(linkedinPosts.appStatus, appStatusFilter));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(linkedinPosts)
+      .where(whereClause);
+
+    const total = Number(countResult[0]?.count ?? 0);
+
+    const rows = await db
+      .select()
+      .from(linkedinPosts)
+      .where(whereClause)
+      .orderBy(dir === 'desc' ? desc(linkedinPosts[sort as keyof typeof linkedinPosts.$inferSelect]) : asc(linkedinPosts[sort as keyof typeof linkedinPosts.$inferSelect]))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    return { posts: rows, total, page };
+  }, {
+    requireAuth: true,
+  })
+
+  .get('/linkedin-posts/:id', async ({ params, set }) => {
+    const [post] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+    if (!post) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+    return post;
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .patch('/linkedin-posts/:id', async ({ params, body, set }) => {
+    const [existing] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+    if (!existing) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (body.appStatus !== undefined) updateData.appStatus = body.appStatus;
+    if (body.appNotes !== undefined) updateData.appNotes = body.appNotes;
+    if (body.appliedAt !== undefined) updateData.appliedAt = body.appliedAt ? new Date(body.appliedAt) : null;
+
+    const [updated] = await db
+      .update(linkedinPosts)
+      .set(updateData)
+      .where(eq(linkedinPosts.id, params.id))
+      .returning();
+
+    return updated;
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+    body: z.object({
+      appStatus: z.string().optional(),
+      appNotes: z.string().optional(),
+      appliedAt: z.string().datetime().optional().nullable(),
+    }),
+  })
+
+  .post('/linkedin-posts/:id/cover-letter', async ({ params, set }) => {
+    const [post] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+    if (!post) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    const [resumeRow, apiKeyRow, modelRow] = await Promise.all([
+      db.select().from(resume).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_api_key')).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_model')).limit(1),
+    ]);
+
+    const resumeText = resumeRow[0]?.extractedText || '';
+    const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+
+    if (!resumeText || !apiKey) {
+      set.status = 400;
+      return { message: 'Resume and API key required' };
+    }
+
+    const coverLetter = await generateCoverLetter(
+      {
+        title: post.title,
+        company: post.company,
+        location: post.location,
+        descriptionSummary: post.postContent,
+        matchedSkills: post.matchedSkills,
+        missingSkills: post.missingSkills,
+      },
+      resumeText,
+      apiKey,
+      model
+    );
+
+    const [updated] = await db
+      .update(linkedinPosts)
+      .set({ coverLetter, updatedAt: new Date() })
+      .where(eq(linkedinPosts.id, params.id))
+      .returning();
+
+    return { coverLetter, post: updated };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .post('/linkedin-posts/:id/email', async ({ params, set }) => {
+    const [post] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+    if (!post) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    const [resumeRow, apiKeyRow, modelRow] = await Promise.all([
+      db.select().from(resume).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_api_key')).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_model')).limit(1),
+    ]);
+
+    const resumeText = resumeRow[0]?.extractedText || '';
+    const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+
+    if (!resumeText || !apiKey) {
+      set.status = 400;
+      return { message: 'Resume and API key required' };
+    }
+
+    // Fallback: extract email from post content if not stored
+    const contactEmail = post.contactEmail || '';
+    if (!contactEmail) {
+      set.status = 400;
+      return { message: 'No contact email found for this post' };
+    }
+
+    const { subject, body } = await generateApplicationEmail(
+      {
+        title: post.title,
+        company: post.company,
+        location: post.location,
+        descriptionSummary: post.postContent,
+        matchedSkills: post.matchedSkills,
+        missingSkills: post.missingSkills,
+      },
+      resumeText,
+      contactEmail,
+      apiKey,
+      model
+    );
+
+    return { subject, body };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .get('/linkedin-posts/:id/questions', async ({ params, set }) => {
+    const [post] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+    if (!post) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    const questions = await db
+      .select()
+      .from(linkedinPostQuestions)
+      .where(eq(linkedinPostQuestions.linkedinPostId, params.id))
+      .orderBy(desc(linkedinPostQuestions.createdAt));
+
+    return { questions };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .post('/linkedin-posts/:id/questions', async ({ params, body, set }) => {
+    const [post] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+    if (!post) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    const [resumeRow, apiKeyRow, modelRow] = await Promise.all([
+      db.select().from(resume).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_api_key')).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_model')).limit(1),
+    ]);
+
+    const resumeText = resumeRow[0]?.extractedText || '';
+    const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+
+    if (!resumeText || !apiKey) {
+      set.status = 400;
+      return { message: 'Resume and API key required' };
+    }
+
+    const answer = await generateAnswer(
+      body.question,
+      {
+        title: post.title,
+        company: post.company,
+        location: post.location,
+        descriptionSummary: post.postContent,
+        matchedSkills: post.matchedSkills,
+        missingSkills: post.missingSkills,
+      },
+      resumeText,
+      apiKey,
+      model
+    );
+
+    const [question] = await db
+      .insert(linkedinPostQuestions)
+      .values({
+        linkedinPostId: params.id,
+        question: body.question,
+        answer,
+      })
+      .returning();
+
+    return { question };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+    body: z.object({ question: z.string().min(1) }),
+  })
+
+  .patch('/linkedin-posts/:id/questions/:questionId', async ({ params, body, set }) => {
+    const [existing] = await db
+      .select()
+      .from(linkedinPostQuestions)
+      .where(eq(linkedinPostQuestions.id, params.questionId))
+      .limit(1);
+
+    if (!existing || existing.linkedinPostId !== params.id) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (body.question !== undefined) updateData.question = body.question;
+    if (body.answer !== undefined) updateData.answer = body.answer;
+
+    const [updated] = await db
+      .update(linkedinPostQuestions)
+      .set(updateData)
+      .where(eq(linkedinPostQuestions.id, params.questionId))
+      .returning();
+
+    return { question: updated };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive(), questionId: z.coerce.number().int().positive() }),
+    body: z.object({
+      question: z.string().optional(),
+      answer: z.string().optional(),
+    }),
+  })
+
+  .delete('/linkedin-posts/:id/questions/:questionId', async ({ params, set }) => {
+    const [existing] = await db
+      .select()
+      .from(linkedinPostQuestions)
+      .where(eq(linkedinPostQuestions.id, params.questionId))
+      .limit(1);
+
+    if (!existing || existing.linkedinPostId !== params.id) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    await db.delete(linkedinPostQuestions).where(eq(linkedinPostQuestions.id, params.questionId));
+    return { deleted: true };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive(), questionId: z.coerce.number().int().positive() }),
+  })
+
+  .delete('/linkedin-posts/:id', async ({ params, set }) => {
+    const [existing] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+    if (!existing) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+    await db.delete(linkedinPosts).where(eq(linkedinPosts.id, params.id));
+    return { deleted: true };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  });

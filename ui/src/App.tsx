@@ -9,6 +9,8 @@ import { QueuePage } from '@/pages/QueuePage';
 import { ResumePage } from '@/pages/ResumePage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { StatsPage } from '@/pages/StatsPage';
+import { LinkedInFeedPage } from '@/pages/LinkedInFeedPage';
+import { LinkedInPostDetailPage } from '@/pages/LinkedInPostDetailPage';
 import { useAuth } from '@/hooks/useAuth';
 
 const queryClient = new QueryClient({
@@ -48,6 +50,8 @@ function AppRoutes() {
                 <Route path="/resume" element={<ResumePage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/stats" element={<StatsPage />} />
+                <Route path="/linkedin-feed" element={<LinkedInFeedPage />} />
+                <Route path="/linkedin-feed/:id" element={<LinkedInPostDetailPage />} />
                 <Route path="/" element={<Navigate to="/jobs" replace />} />
               </Routes>
             </Layout>

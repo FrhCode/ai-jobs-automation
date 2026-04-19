@@ -13,6 +13,7 @@ const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElem
           'bg-[length:16px_16px] bg-[right_12px_center] bg-no-repeat py-2 pl-4 pr-10 text-sm text-text-primary',
           'focus-visible:outline-none focus-visible:border-cyan focus-visible:ring-1 focus-visible:ring-cyan',
           'disabled:cursor-not-allowed disabled:opacity-50',
+          'dark:[&>option]:bg-surface dark:[&>option]:text-text-primary',
           className
         )}
         {...props}

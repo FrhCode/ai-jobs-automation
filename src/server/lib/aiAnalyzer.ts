@@ -13,6 +13,8 @@ const SENTINEL = {
   missingSkills: [] as string[],
   summary: 'AI analysis failed',
   recommendation: 'Skip' as const,
+  applyUrl: '',
+  contactEmail: '',
 };
 
 function createClient(apiKey: string) {
@@ -68,6 +70,54 @@ ${snippet}`;
   } catch (err) {
     console.log(`  [Filter] Error: ${(err as Error).message} — proceeding with full analysis`);
     return { isTech: true, title: '', company: '' };
+  }
+}
+
+export interface ProgrammerFilterResult {
+  isProgrammerJob: boolean;
+  title: string;
+  company: string;
+}
+
+export async function classifyIsProgrammerJob(
+  postContent: string,
+  apiKey: string,
+  model: string
+): Promise<ProgrammerFilterResult> {
+  const client = createClient(apiKey);
+  const snippet = (postContent || '').slice(0, 300);
+  if (!snippet.trim()) return { isProgrammerJob: true, title: '', company: '' };
+
+  const prompt = `Is this a software/programming/tech/engineering/developer job posting? JSON only, no markdown:
+{"isProgrammerJob": true|false, "title": "<inferred job title or Unknown>", "company": "<inferred company or Unknown>"}
+
+Job text (first 300 chars):
+${snippet}`;
+
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Programmer filter timed out')), 15000)
+    );
+    const completion = await Promise.race([
+      client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0,
+      }),
+      timeout,
+    ]);
+    const text = completion.choices[0]?.message?.content || '';
+    const match = /\{[\s\S]*\}/.exec(text);
+    if (!match) return { isProgrammerJob: true, title: '', company: '' };
+    const parsed = JSON.parse(match[0]);
+    return {
+      isProgrammerJob: parsed.isProgrammerJob !== false,
+      title: parsed.title || '',
+      company: parsed.company || '',
+    };
+  } catch (err) {
+    console.log(`  [Filter] Programmer check error: ${(err as Error).message} — proceeding with full analysis`);
+    return { isProgrammerJob: true, title: '', company: '' };
   }
 }
 
@@ -187,6 +237,112 @@ export async function generateCoverLetter(
   return responseText.trim();
 }
 
+function createApplicationEmailPrompt(job: {
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  descriptionSummary: string | null;
+  matchedSkills: string[] | null;
+  missingSkills: string[] | null;
+}, resumeText: string, contactEmail: string) {
+  return `You are an expert career coach who writes compelling, personalized job-application emails.
+
+## Candidate Resume
+${resumeText.slice(0, 4000)}
+
+## Job Details
+- Title: ${job.title || 'Unknown'}
+- Company: ${job.company || 'Unknown'}
+- Location: ${job.location || 'Unknown'}
+- Role Summary: ${job.descriptionSummary || 'Not available'}
+
+## Matched Skills
+${(job.matchedSkills ?? []).join(', ') || 'None listed'}
+
+## Missing Skills
+${(job.missingSkills ?? []).join(', ') || 'None listed'}
+
+## Recipient
+${contactEmail}
+
+## Task
+Write a professional job-application email. The tone should be confident, enthusiastic, and authentic.
+
+Requirements:
+1. Subject line should be clear and professional (e.g., "Application for [Role] — [Candidate Name]")
+2. Greet the recipient professionally
+3. Mention the specific role and company
+4. Highlight 2-3 key matched skills with concrete examples
+5. Acknowledge any missing skills briefly but frame them as growth opportunities
+6. End with a strong call to action
+7. Do NOT include markdown formatting, headers, or code blocks — just plain text
+
+Return ONLY a JSON object in this exact schema — no markdown, no explanation, no extra text:
+{"subject": "<email subject line>", "body": "<full email body>"}`;
+}
+
+export interface GenerateEmailResult {
+  subject: string;
+  body: string;
+}
+
+export async function generateApplicationEmail(
+  job: {
+    title: string | null;
+    company: string | null;
+    location: string | null;
+    descriptionSummary: string | null;
+    matchedSkills: string[] | null;
+    missingSkills: string[] | null;
+  },
+  resumeText: string,
+  contactEmail: string,
+  apiKey: string,
+  model: string
+): Promise<GenerateEmailResult> {
+  const client = createClient(apiKey);
+  const prompt = createApplicationEmailPrompt(job, resumeText, contactEmail);
+
+  let responseText = '';
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Email generation timed out after 60s')), 60000)
+    );
+    const completion = await Promise.race([
+      client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+      }),
+      timeout,
+    ]);
+    responseText = completion.choices[0]?.message?.content || '';
+  } catch (err) {
+    console.log(`  [AI] Email generation error: ${(err as Error).message}`);
+    throw err;
+  }
+
+  // Try to parse JSON response
+  try {
+    const match = /\{[\s\S]*\}/.exec(responseText);
+    if (match) {
+      const parsed = JSON.parse(match[0]);
+      return {
+        subject: (parsed.subject as string) || 'Job Application',
+        body: (parsed.body as string) || responseText.trim(),
+      };
+    }
+  } catch {
+    // Fall through
+  }
+
+  // Fallback: split first line as subject, rest as body
+  const lines = responseText.trim().split('\n');
+  const subject = lines[0].replace(/^Subject:\s*/i, '').trim() || 'Job Application';
+  const body = lines.slice(1).join('\n').trim() || responseText.trim();
+  return { subject, body };
+}
+
 export interface AnalyzeInput {
   rawText: string;
   scrapeStatus: string;
@@ -287,6 +443,131 @@ export async function generateAnswer(
   }
 
   return responseText.trim();
+}
+
+function buildLinkedInPrompt(postContent: string, resumeText: string) {
+  return `You are a job-fit analyzer specializing in informal LinkedIn posts. Respond ONLY with valid JSON — no markdown, no explanation, no extra text.
+
+## Candidate Resume
+${resumeText.slice(0, 4000)}
+
+## LinkedIn Post
+${postContent.slice(0, 6000)}
+
+## Task
+Determine if this LinkedIn post is a job opportunity. If it is, extract details and score the fit.
+
+Return exactly this JSON schema:
+{
+  "isJob": true|false,
+  "title": "<job title or Unknown>",
+  "company": "<company name or Unknown>",
+  "location": "<location or Unknown>",
+  "salary": "<salary range or Not listed>",
+  "descriptionSummary": "<2-3 sentence summary of the role>",
+  "score": <integer 0-100>,
+  "matchedSkills": ["<skill>", ...],
+  "missingSkills": ["<skill>", ...],
+  "summary": "<2-3 sentences on why this is or isn't a good fit>",
+  "recommendation": "<Apply | Consider | Skip>",
+  "applyUrl": "<apply/link URL from the post, or empty string if none>",
+  "contactEmail": "<contact email from the post, or empty string if none>"
+}
+
+Scoring guide:
+- 90-100: Near-perfect match, apply immediately
+- 70-89: Strong match, apply with confidence
+- 50-69: Partial match, worth considering
+- 0-49: Significant gaps, skip unless strategic
+
+If isJob is false, still fill in the other fields with defaults (score 0, recommendation Skip).`;
+}
+
+export interface LinkedInAnalyzeResult {
+  isJob: boolean;
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
+  descriptionSummary: string;
+  score: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  summary: string;
+  recommendation: string;
+  applyUrl: string;
+  contactEmail: string;
+}
+
+export async function analyzeLinkedInPost(
+  postContent: string,
+  resumeText: string,
+  apiKey: string,
+  model: string
+): Promise<LinkedInAnalyzeResult> {
+  const client = createClient(apiKey);
+  const prompt = buildLinkedInPrompt(postContent, resumeText);
+
+  if (process.env.DEBUG === 'true') {
+    const debugDir = path.resolve('debug');
+    await mkdir(debugDir, { recursive: true });
+    const promptFile = path.join(debugDir, `linkedin_prompt_${Date.now()}.txt`);
+    await Bun.write(promptFile, prompt);
+    console.log(`  [AI] LinkedIn prompt dumped → ${promptFile} (${prompt.length} chars)`);
+  }
+
+  let responseText = '';
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('LinkedIn AI request timed out after 60s')), 60000)
+    );
+    const completion = await Promise.race([
+      client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+      }),
+      timeout,
+    ]);
+    responseText = completion.choices[0]?.message?.content || '';
+  } catch (err) {
+    console.log(`  [AI] LinkedIn API error: ${(err as Error).message}`);
+    return { isJob: false, ...SENTINEL };
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(responseText);
+  } catch {
+    const match = /\{[\s\S]*\}/.exec(responseText);
+    if (match) {
+      try {
+        parsed = JSON.parse(match[0]);
+      } catch {
+        console.log(`  [AI] Could not parse LinkedIn response`);
+        return { isJob: false, ...SENTINEL };
+      }
+    } else {
+      console.log(`  [AI] No JSON found in LinkedIn response`);
+      return { isJob: false, ...SENTINEL };
+    }
+  }
+
+  return {
+    isJob: parsed.isJob === true,
+    title: (parsed.title as string) || SENTINEL.title,
+    company: (parsed.company as string) || SENTINEL.company,
+    location: (parsed.location as string) || SENTINEL.location,
+    salary: (parsed.salary as string) || SENTINEL.salary,
+    descriptionSummary: (parsed.descriptionSummary as string) || SENTINEL.descriptionSummary,
+    score: typeof parsed.score === 'number' ? parsed.score : SENTINEL.score,
+    matchedSkills: Array.isArray(parsed.matchedSkills) ? (parsed.matchedSkills as string[]) : [],
+    missingSkills: Array.isArray(parsed.missingSkills) ? (parsed.missingSkills as string[]) : [],
+    summary: (parsed.summary as string) || SENTINEL.summary,
+    recommendation: (parsed.recommendation as string) || SENTINEL.recommendation,
+    applyUrl: (parsed.applyUrl as string) || '',
+    contactEmail: (parsed.contactEmail as string) || '',
+  };
 }
 
 export async function analyzeJob(

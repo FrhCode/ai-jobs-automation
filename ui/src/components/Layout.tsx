@@ -12,6 +12,7 @@ import {
   X,
   Sun,
   Moon,
+  Rss,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLogout } from '@/hooks/useAuth';
@@ -23,6 +24,7 @@ const navItems = [
   { path: '/add', label: 'Add URLs', icon: PlusCircle },
   { path: '/queue', label: 'Queue', icon: ListOrdered },
   { path: '/resume', label: 'Resume', icon: FileText },
+  { path: '/linkedin-feed', label: 'LinkedIn Feed', icon: Rss },
   { path: '/stats', label: 'Stats', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];

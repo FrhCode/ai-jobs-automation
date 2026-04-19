@@ -1,5 +1,5 @@
 import type { JobsQuery, UpdateJob, CreateQuestionInput, UpdateQuestionInput } from '@/shared/schemas';
-import type { Job, JobQuestion, QueueItem, ResumeData, StatsData, OpenRouterCredits } from '@/types/data';
+import type { Job, JobQuestion, QueueItem, ResumeData, StatsData, OpenRouterCredits, LinkedInPost } from '@/types/data';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -199,4 +199,96 @@ export async function getStats() {
 // OpenRouter
 export async function getOpenRouterCredits() {
   return request<OpenRouterCredits>('/api/openrouter/credits');
+}
+
+// LinkedIn Feed
+export async function parseLinkedInFeed(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch('/api/linkedin-feed/parse', {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Parse failed' }));
+    throw new Error(err.message);
+  }
+  return res.json() as Promise<{ batchId: string | null; total: number; matched: number; status: string; message?: string }>;
+}
+
+export async function getLinkedInBatchStatus(batchId: string) {
+  return request<{
+    batchId: string;
+    total: number;
+    processed: number;
+    status: string;
+    posts: LinkedInPost[];
+  }>(`/api/linkedin-feed/batch/${batchId}`);
+}
+
+export async function getLinkedInPosts(page = 1, limit = 20, filters: { isJob?: boolean; recommendation?: string; minScore?: number; appStatus?: string } = {}) {
+  const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('limit', String(limit));
+  if (filters.isJob !== undefined) params.append('isJob', String(filters.isJob));
+  if (filters.recommendation) params.append('recommendation', filters.recommendation);
+  if (filters.minScore !== undefined) params.append('minScore', String(filters.minScore));
+  if (filters.appStatus) params.append('appStatus', filters.appStatus);
+  return request<{ posts: LinkedInPost[]; total: number; page: number }>(
+    `/api/linkedin-posts?${params.toString()}`
+  );
+}
+
+export async function getLinkedInPost(id: number) {
+  return request<LinkedInPost>(`/api/linkedin-posts/${id}`);
+}
+
+export async function updateLinkedInPost(id: number, body: { appStatus?: string; appNotes?: string; appliedAt?: string | null }) {
+  return request<LinkedInPost>(`/api/linkedin-posts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function generateLinkedInCoverLetter(id: number) {
+  return request<{ coverLetter: string; post: LinkedInPost }>(`/api/linkedin-posts/${id}/cover-letter`, {
+    method: 'POST',
+  });
+}
+
+export async function generateLinkedInEmail(id: number) {
+  return request<{ subject: string; body: string }>(`/api/linkedin-posts/${id}/email`, {
+    method: 'POST',
+  });
+}
+
+export async function getLinkedInPostQuestions(id: number) {
+  return request<{ questions: JobQuestion[] }>(`/api/linkedin-posts/${id}/questions`);
+}
+
+export async function createLinkedInPostQuestion(id: number, body: { question: string }) {
+  return request<{ question: JobQuestion }>(`/api/linkedin-posts/${id}/questions`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateLinkedInPostQuestion(id: number, questionId: number, body: { question?: string; answer?: string }) {
+  return request<{ question: JobQuestion }>(`/api/linkedin-posts/${id}/questions/${questionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteLinkedInPostQuestion(id: number, questionId: number) {
+  return request<{ deleted: boolean }>(`/api/linkedin-posts/${id}/questions/${questionId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function deleteLinkedInPost(id: number) {
+  return request<{ deleted: boolean }>(`/api/linkedin-posts/${id}`, {
+    method: 'DELETE',
+  });
 }

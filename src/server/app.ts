@@ -9,6 +9,7 @@ import { settingsRoutes } from './routes/settings';
 import { statsRoutes } from './routes/stats';
 import { cronRoutes } from './routes/cron';
 import { openrouterRoutes } from './routes/openrouter';
+import { linkedinFeedRoutes } from './routes/linkedinFeed';
 
 function getCorsOrigin() {
   if (process.env.NODE_ENV === 'development') return 'http://localhost:3000';
@@ -39,7 +40,8 @@ export const app = new Elysia()
   .use(settingsRoutes)
   .use(statsRoutes)
   .use(cronRoutes)
-  .use(openrouterRoutes);
+  .use(openrouterRoutes)
+  .use(linkedinFeedRoutes);
 
 if (process.env.NODE_ENV === 'production') {
   app.use(staticPlugin({
