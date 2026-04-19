@@ -62,7 +62,7 @@ bun run db:migrate
 bun run dev
 ```
 
-Server runs on `http://localhost:3001`, client on `http://localhost:5173`.
+Server runs on `http://localhost:3001`, client on `http://localhost:3000`.
 
 ## Docker Deployment
 
@@ -79,7 +79,7 @@ Access the app at `http://localhost:8080`.
 Services:
 - **Nginx** (port `8080`) — reverse proxy
 - **App** (port `3001`) — Elysia server
-- **PostgreSQL** (port `8021`) — database
+- **PostgreSQL** (port `8020`) — database
 
 ## Environment Variables
 
@@ -138,7 +138,7 @@ bun run db:studio     # Open Drizzle Studio
 - Add job questions feature: AI-generated screening questions per job with answer management in job detail panel
 
 **1.0.2**
-- Expose PostgreSQL port `8021` in Docker Compose for external access
+- Expose PostgreSQL port `8020` in Docker Compose for external access
 
 **1.0.1**
 - Default `/jobs` filter to `not_applied` status
