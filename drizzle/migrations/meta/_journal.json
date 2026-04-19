@@ -15,6 +15,13 @@
       "when": 1776573192738,
       "tag": "0001_colorful_microbe",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776600000000,
+      "tag": "0002_add_job_questions",
+      "breakpoints": true
     }
   ]
 }

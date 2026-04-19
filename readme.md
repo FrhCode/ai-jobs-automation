@@ -1,16 +1,152 @@
-**1.0.3**
+# Job Search Automation
 
+Automate job evaluation against your resume using AI. This application scrapes job postings, parses your resume, and uses AI to analyze job fit — helping you focus on the right opportunities.
+
+## Features
+
+- **Job Scraping** — Automatically fetch job listings from configurable sources
+- **Resume Parsing** — Extract text from PDF resumes for AI analysis
+- **AI-Powered Evaluation** — Analyze job fit using OpenRouter AI models
+- **Job Management** — Track jobs with statuses: `not_applied`, `applied`, `not_interested`
+- **Screening Questions** — AI-generated screening questions per job with answer management
+- **Queue System** — Background processing for scraping and analysis tasks
+- **Stats Dashboard** — Overview of your job search pipeline
+- **Secure** — Password-protected access with SSRF guard on outbound requests
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | [Bun](https://bun.sh) |
+| Backend | [Elysia](https://elysiajs.com) |
+| Frontend | React 19 + Vite + Tailwind CSS v4 |
+| Database | PostgreSQL 16 + [Drizzle ORM](https://orm.drizzle.team) |
+| AI | OpenRouter API |
+| Scheduler | node-cron |
+| Deployment | Docker + Docker Compose + Nginx |
+
+## Prerequisites
+
+- [Bun](https://bun.sh) 1.2+
+- PostgreSQL 16+ (or use Docker)
+- OpenRouter API key
+
+## Quick Start
+
+### 1. Clone & Install
+
+```bash
+git clone https://github.com/FrhCode/ai-jobs-automation.git
+cd ai-jobs-automation
+bun install
+cd ui && bun install && cd ..
+```
+
+### 2. Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env with your values
+```
+
+### 3. Run Database Migrations
+
+```bash
+bun run db:migrate
+```
+
+### 4. Start Development
+
+```bash
+# Run both server and client
+bun run dev
+```
+
+Server runs on `http://localhost:3001`, client on `http://localhost:5173`.
+
+## Docker Deployment
+
+```bash
+# Copy and configure environment
+cp .env.example .env
+
+# Build and run all services
+docker-compose up --build -d
+```
+
+Access the app at `http://localhost:8080`.
+
+Services:
+- **Nginx** (port `8080`) — reverse proxy
+- **App** (port `3001`) — Elysia server
+- **PostgreSQL** (port `8021`) — database
+
+## Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `DATABASE_URL` | PostgreSQL connection string | Yes |
+| `PORT` | Server port (default: `3001`) | No |
+| `APP_PASSWORD` | Login password for the app | Yes |
+| `OPENROUTER_API_KEY` | API key from [OpenRouter](https://openrouter.ai) | Yes |
+| `OPENROUTER_MODEL` | Model ID (default: `anthropic/claude-sonnet-4-6`) | No |
+| `CORS_ORIGIN` | Comma-separated allowed origins | No |
+| `DEBUG` | Enable debug logging (`true`/`false`) | No |
+| `UPLOADS_DIR` | Resume upload directory | No |
+
+## Scripts
+
+```bash
+# Development
+bun run dev           # Start server + client concurrently
+bun run dev:server    # Start server only
+bun run dev:client    # Start client only
+
+# Build & Production
+bun run build         # Build frontend for production
+bun run start         # Start production server
+
+# Database
+bun run db:generate   # Generate Drizzle migrations
+bun run db:migrate    # Run pending migrations
+bun run db:studio     # Open Drizzle Studio
+```
+
+## Project Structure
+
+```
+├── src/
+│   ├── server/           # Elysia backend
+│   │   ├── db/           # Drizzle schema & connection
+│   │   ├── lib/          # Business logic (AI, scraper, queue, parser)
+│   │   ├── plugins/      # Elysia plugins (auth)
+│   │   └── routes/       # API routes
+│   ├── shared/           # Shared utilities
+│   └── types/            # TypeScript types
+├── ui/                   # React frontend
+│   └── src/              # Components, pages, hooks
+├── drizzle/              # Database migrations
+├── nginx/                # Nginx Docker config
+├── uploads/              # Resume PDF storage
+├── docker-compose.yml    # Production orchestration
+└── Dockerfile            # App container image
+```
+
+## Changelog
+
+**1.0.3**
 - Add job questions feature: AI-generated screening questions per job with answer management in job detail panel
 
 **1.0.2**
-
 - Expose PostgreSQL port `8021` in Docker Compose for external access
 
 **1.0.1**
-
 - Default `/jobs` filter to `not_applied` status
 - Add inline "Not Interested" action in jobs list
 
 **1.0.0**
+- Go live
 
-- go live
+## License
+
+MIT
