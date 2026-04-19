@@ -15,15 +15,15 @@ Automate job evaluation against your resume using AI. This application scrapes j
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | [Bun](https://bun.sh) |
-| Backend | [Elysia](https://elysiajs.com) |
-| Frontend | React 19 + Vite + Tailwind CSS v4 |
-| Database | PostgreSQL 16 + [Drizzle ORM](https://orm.drizzle.team) |
-| AI | OpenRouter API |
-| Scheduler | node-cron |
-| Deployment | Docker + Docker Compose + Nginx |
+| Layer      | Technology                                              |
+| ---------- | ------------------------------------------------------- |
+| Runtime    | [Bun](https://bun.sh)                                   |
+| Backend    | [Elysia](https://elysiajs.com)                          |
+| Frontend   | React 19 + Vite + Tailwind CSS v4                       |
+| Database   | PostgreSQL 16 + [Drizzle ORM](https://orm.drizzle.team) |
+| AI         | OpenRouter API                                          |
+| Scheduler  | node-cron                                               |
+| Deployment | Docker + Docker Compose + Nginx                         |
 
 ## Prerequisites
 
@@ -74,25 +74,26 @@ cp .env.example .env
 docker-compose up --build -d
 ```
 
-Access the app at `http://localhost:8080`.
+Access the app at `http://localhost:8020`.
 
 Services:
-- **Nginx** (port `8080`) — reverse proxy
+
+- **Nginx** (port `8020`) — reverse proxy
 - **App** (port `3001`) — Elysia server
 - **PostgreSQL** (port `8020`) — database
 
 ## Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `PORT` | Server port (default: `3001`) | No |
-| `APP_PASSWORD` | Login password for the app | Yes |
-| `OPENROUTER_API_KEY` | API key from [OpenRouter](https://openrouter.ai) | Yes |
-| `OPENROUTER_MODEL` | Model ID (default: `anthropic/claude-sonnet-4-6`) | No |
-| `CORS_ORIGIN` | Comma-separated allowed origins | No |
-| `DEBUG` | Enable debug logging (`true`/`false`) | No |
-| `UPLOADS_DIR` | Resume upload directory | No |
+| Variable             | Description                                       | Required |
+| -------------------- | ------------------------------------------------- | -------- |
+| `DATABASE_URL`       | PostgreSQL connection string                      | Yes      |
+| `PORT`               | Server port (default: `3001`)                     | No       |
+| `APP_PASSWORD`       | Login password for the app                        | Yes      |
+| `OPENROUTER_API_KEY` | API key from [OpenRouter](https://openrouter.ai)  | Yes      |
+| `OPENROUTER_MODEL`   | Model ID (default: `anthropic/claude-sonnet-4-6`) | No       |
+| `CORS_ORIGIN`        | Comma-separated allowed origins                   | No       |
+| `DEBUG`              | Enable debug logging (`true`/`false`)             | No       |
+| `UPLOADS_DIR`        | Resume upload directory                           | No       |
 
 ## Scripts
 
@@ -135,16 +136,20 @@ bun run db:studio     # Open Drizzle Studio
 ## Changelog
 
 **1.0.3**
+
 - Add job questions feature: AI-generated screening questions per job with answer management in job detail panel
 
 **1.0.2**
+
 - Expose PostgreSQL port `8020` in Docker Compose for external access
 
 **1.0.1**
+
 - Default `/jobs` filter to `not_applied` status
 - Add inline "Not Interested" action in jobs list
 
 **1.0.0**
+
 - Go live
 
 ## License
