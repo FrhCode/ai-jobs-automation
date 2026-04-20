@@ -138,7 +138,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.7** (Current)
+**1.1.8** (Current)
+
+- **Email Warning Wording Fix** — "0 hours ago" now correctly shows "just now" when opening mail client immediately after generating an email
+
+**1.1.7**
 
 - **Parallel Chunk Upload** — LinkedIn HTML uploads now send 5 chunks concurrently; progress shown as percentage
 

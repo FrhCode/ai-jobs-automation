@@ -531,7 +531,7 @@ export function LinkedInPostDetailPage() {
                           <div className="flex items-start gap-2 p-3 rounded-lg bg-amber/10 border border-amber/20 text-amber text-sm">
                             <Clock className="w-4 h-4 shrink-0 mt-0.5" />
                             <span>
-                              You sent an email {Math.round(hoursSinceSent!)} hour{Math.round(hoursSinceSent!) !== 1 ? "s" : ""} ago. Sending again may look spammy.
+                              You sent an email {hoursSinceSent! < 1 ? "just now" : `${Math.round(hoursSinceSent!)} hour${Math.round(hoursSinceSent!) !== 1 ? "s" : ""} ago`}. Sending again may look spammy.
                             </span>
                           </div>
                         )}
