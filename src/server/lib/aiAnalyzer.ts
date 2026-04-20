@@ -87,13 +87,13 @@ export async function classifyIsProgrammerJob(
   model: string,
 ): Promise<ProgrammerFilterResult> {
   const client = createClient(apiKey);
-  const snippet = (postContent || "").slice(0, 300);
+  const snippet = (postContent || "").slice(0, 2000);
   if (!snippet.trim()) return { isProgrammerJob: true, title: "", company: "" };
 
-  const prompt = `Is this a software/programming/tech/engineering/developer job posting? JSON only, no markdown:
-{"isProgrammerJob": true|false, "title": "<inferred job title or Unknown>", "company": "<inferred company or Unknown>"}
+  const prompt = `Does this LinkedIn post contain ANY software/programming/tech/engineering/developer/IT job opening? The post may list multiple positions — return true if at least one is tech-related. JSON only, no markdown:
+{"isProgrammerJob": true|false, "title": "<best tech/IT job title found, or Unknown>", "company": "<inferred company or Unknown>"}
 
-Job text (first 300 chars):
+Post text:
 ${snippet}`;
 
   try {
@@ -284,13 +284,13 @@ ${(job.missingSkills ?? []).join(", ") || "None listed"}
 ${contactEmail}
 
 ## Task
-Write a professional job-application email. The tone should be confident, enthusiastic, and authentic.
+Write a professional job-application email for the SPECIFIC role listed under Job Details above. The tone should be confident, enthusiastic, and authentic.
 
 Requirements:
 1. Subject line should be clear and professional (e.g., "Application for [Role] — [Candidate Name]")
 2. Greet the recipient professionally
-3. Mention the specific role and company
-4. Highlight 2-3 key matched skills with concrete examples
+3. Explicitly name the specific role you are applying for (use the exact title from Job Details)
+4. Highlight 2-3 key matched skills with concrete examples from the resume
 5. Acknowledge any missing skills briefly but frame them as growth opportunities
 6. End with a strong call to action
 7. Do NOT include markdown formatting, headers, bold, italic or code blocks — just plain text
@@ -419,9 +419,9 @@ ${(job.missingSkills ?? []).join(", ") || "None listed"}
 ${question}
 
 ## Task
-Write a strong, authentic answer to this job application question. The answer should:
+Write a strong, authentic answer to this job application question, tailored specifically to the role listed under Job Details above. The answer should:
 1. Be specific and concrete — avoid generic fluff
-2. Draw from the candidate's actual resume experience where possible
+2. Draw from the candidate's actual resume experience where relevant to THIS specific role
 3. Be concise but compelling (typically 100-300 words unless the question clearly asks for more)
 4. Match the tone expected for the role (professional, enthusiastic, thoughtful)
 5. Address any missing skills honestly but frame them as growth opportunities
@@ -480,20 +480,22 @@ ${resumeText.slice(0, 4000)}
 ${postContent.slice(0, 6000)}
 
 ## Task
-Determine if this LinkedIn post is a job opportunity. If it is, extract details and score the fit.
+1. Determine if this LinkedIn post contains one or more job opportunities.
+2. If the post lists MULTIPLE positions, read ALL of them carefully, then select the SINGLE position that best matches the candidate's resume skills and experience. Do NOT default to the first position in the list — evaluate every position against the resume and pick the strongest match.
+3. Score and summarize based on that best-matching position only.
 
 Return exactly this JSON schema:
 {
   "isJob": true|false,
-  "title": "<job title or Unknown>",
+  "title": "<the specific job title that best matches the resume, not just the first listed>",
   "company": "<company name or Unknown>",
   "location": "<location or Unknown>",
   "salary": "<salary range or Not listed>",
-  "descriptionSummary": "<2-3 sentence summary of the role>",
+  "descriptionSummary": "<2-3 sentence summary of the best-matched role and why it was selected over other listed positions>",
   "score": <integer 0-100>,
-  "matchedSkills": ["<skill>", ...],
-  "missingSkills": ["<skill>", ...],
-  "summary": "<2-3 sentences on why this is or isn't a good fit>",
+  "matchedSkills": ["<skill from resume that matches this specific role>", ...],
+  "missingSkills": ["<skill required for this role but not in resume>", ...],
+  "summary": "<2-3 sentences on why this specific role is or isn't a good fit for the candidate>",
   "recommendation": "<Apply | Consider | Skip>",
   "applyUrl": "<apply/link URL from the post, or empty string if none>",
   "contactEmail": "<contact email from the post, or empty string if none>"
