@@ -1,0 +1,1 @@
+ALTER TABLE "linkedin_posts" ADD COLUMN "ai_failed" boolean DEFAULT false;

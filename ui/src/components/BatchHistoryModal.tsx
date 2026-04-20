@@ -3,9 +3,8 @@ import { cn } from '@/lib/utils';
 import { useLinkedInBatches, useRetryLinkedInBatch } from '@/hooks/useLinkedInFeed';
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
-  onSelectBatch: (batchId: string) => void;
+  readonly open: boolean;
+  readonly onClose: () => void;
 }
 
 function formatDate(iso: string) {
@@ -14,7 +13,7 @@ function formatDate(iso: string) {
   });
 }
 
-export function BatchHistoryModal({ open, onClose, onSelectBatch }: Props) {
+export function BatchHistoryModal({ open, onClose }: Props) {
   const { data: batches, isLoading, refetch } = useLinkedInBatches();
   const retry = useRetryLinkedInBatch();
 
@@ -95,12 +94,6 @@ export function BatchHistoryModal({ open, onClose, onSelectBatch }: Props) {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => { onSelectBatch(batch.batchId); onClose(); }}
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-elevated border border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-hover transition-all cursor-pointer"
-                    >
-                      View
-                    </button>
                     {hasFail && (
                       <button
                         onClick={() => retry.mutate(batch.batchId)}

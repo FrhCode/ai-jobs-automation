@@ -135,7 +135,6 @@ export function LinkedInFeedPage() {
       <BatchHistoryModal
         open={showBatchHistory}
         onClose={() => setShowBatchHistory(false)}
-        onSelectBatch={(batchId) => updateUrl({ batch: batchId })}
       />
 
       {/* Header */}

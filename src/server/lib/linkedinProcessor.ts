@@ -176,6 +176,7 @@ export async function processLinkedInBatch(
         .update(linkedinPosts)
         .set({
           aiAnalyzed: false,
+          aiFailed: true,
           summary: `AI analysis failed: ${fr.error}`,
           updatedAt: new Date(),
         })
@@ -196,6 +197,7 @@ export async function processLinkedInBatch(
           recommendation: "Skip",
           summary: "Not a programmer/tech job — filtered out",
           aiAnalyzed: true,
+          aiFailed: false,
           updatedAt: new Date(),
         })
         .where(eq(linkedinPosts.id, fr.postId));
@@ -249,6 +251,7 @@ export async function processLinkedInBatch(
             applyUrl: result.aiResult.applyUrl || null,
             contactEmail: result.aiResult.contactEmail || null,
             aiAnalyzed: true,
+            aiFailed: false,
             updatedAt: new Date(),
           })
           .where(eq(linkedinPosts.id, result.postId));
@@ -257,6 +260,7 @@ export async function processLinkedInBatch(
           .update(linkedinPosts)
           .set({
             aiAnalyzed: false,
+            aiFailed: true,
             summary: `AI analysis failed: ${result.error}`,
             updatedAt: new Date(),
           })

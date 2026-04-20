@@ -1,6 +1,6 @@
 import Elysia from 'elysia';
 import { z } from 'zod';
-import { eq, inArray, desc, asc, sql, and, gte, like } from 'drizzle-orm';
+import { eq, inArray, desc, asc, sql, and, gte } from 'drizzle-orm';
 import { db } from '../db';
 import { linkedinPosts, resume, settings, linkedinPostQuestions } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
@@ -102,7 +102,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
         batchId: linkedinPosts.batchId,
         total: sql<number>`count(*)`,
         processed: sql<number>`sum(case when ${linkedinPosts.aiAnalyzed} = true then 1 else 0 end)`,
-        failed: sql<number>`sum(case when ${linkedinPosts.summary} like 'AI analysis failed:%' then 1 else 0 end)`,
+        failed: sql<number>`sum(case when ${linkedinPosts.aiFailed} = true then 1 else 0 end)`,
         createdAt: sql<string>`min(${linkedinPosts.createdAt})`,
       })
       .from(linkedinPosts)
@@ -128,7 +128,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       .select({
         count: sql<number>`count(*)`,
         analyzed: sql<number>`sum(case when ${linkedinPosts.aiAnalyzed} = true then 1 else 0 end)`,
-        failed: sql<number>`sum(case when ${linkedinPosts.summary} like 'AI analysis failed:%' then 1 else 0 end)`,
+        failed: sql<number>`sum(case when ${linkedinPosts.aiFailed} = true then 1 else 0 end)`,
       })
       .from(linkedinPosts)
       .where(eq(linkedinPosts.batchId, batchId));
@@ -165,7 +165,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       .from(linkedinPosts)
       .where(and(
         eq(linkedinPosts.batchId, batchId),
-        like(linkedinPosts.summary, 'AI analysis failed:%')
+        eq(linkedinPosts.aiFailed, true)
       ));
 
     if (failedPosts.length === 0) {
@@ -174,7 +174,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
 
     await db
       .update(linkedinPosts)
-      .set({ aiAnalyzed: false, summary: null, updatedAt: new Date() })
+      .set({ aiAnalyzed: false, aiFailed: false, summary: null, updatedAt: new Date() })
       .where(inArray(linkedinPosts.id, failedPosts.map((p) => p.id)));
 
     const [resumeRow, apiKeyRow, modelRow] = await Promise.all([

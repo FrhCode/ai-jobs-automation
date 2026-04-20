@@ -93,6 +93,7 @@ export const linkedinPosts = pgTable('linkedin_posts', {
   summary: text('summary'),
   recommendation: text('recommendation'),
   aiAnalyzed: boolean('ai_analyzed').default(false),
+  aiFailed: boolean('ai_failed').default(false),
   promotedToJobId: integer('promoted_to_job_id'),
   appStatus: text('app_status').default('not_applied'),
   appNotes: text('app_notes'),
