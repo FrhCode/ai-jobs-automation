@@ -175,7 +175,7 @@ export async function processLinkedInBatch(
       await db
         .update(linkedinPosts)
         .set({
-          aiAnalyzed: false,
+          aiAnalyzed: true,
           aiFailed: true,
           summary: `AI analysis failed: ${fr.error}`,
           updatedAt: new Date(),
@@ -259,7 +259,7 @@ export async function processLinkedInBatch(
         await db
           .update(linkedinPosts)
           .set({
-            aiAnalyzed: false,
+            aiAnalyzed: true,
             aiFailed: true,
             summary: `AI analysis failed: ${result.error}`,
             updatedAt: new Date(),
