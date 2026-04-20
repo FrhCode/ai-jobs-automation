@@ -1,9 +1,9 @@
-import { eq, inArray } from 'drizzle-orm';
-import { db } from '../db';
-import { linkedinPosts } from '../db/schema';
-import type { SelectLinkedInPost } from '../db/schema';
-import { analyzeLinkedInPost, classifyIsProgrammerJob } from './aiAnalyzer';
-import type { ParsedPost } from './linkedinParser';
+import { eq } from "drizzle-orm";
+import { db } from "../db";
+import type { SelectLinkedInPost } from "../db/schema";
+import { linkedinPosts } from "../db/schema";
+import { analyzeLinkedInPost, classifyIsProgrammerJob } from "./aiAnalyzer";
+import type { ParsedPost } from "./linkedinParser";
 
 const CONCURRENCY = 3;
 
@@ -14,7 +14,10 @@ interface ProcessingContext {
   model: string;
 }
 
-async function runWithLimit<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
+async function runWithLimit<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number,
+): Promise<T[]> {
   const results = new Array<T>(tasks.length);
   let index = 0;
 
@@ -24,13 +27,18 @@ async function runWithLimit<T>(tasks: (() => Promise<T>)[], limit: number): Prom
       try {
         results[i] = await tasks[i]();
       } catch (err) {
-        console.error(`[LinkedIn Batch] Worker error at index ${i}:`, (err as Error).message);
+        console.error(
+          `[LinkedIn Batch] Worker error at index ${i}:`,
+          (err as Error).message,
+        );
         throw err;
       }
     }
   }
 
-  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => worker());
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () =>
+    worker(),
+  );
   await Promise.all(workers);
   return results;
 }
@@ -38,7 +46,7 @@ async function runWithLimit<T>(tasks: (() => Promise<T>)[], limit: number): Prom
 export async function processLinkedInBatch(
   posts: ParsedPost[],
   existingMap: Map<string, SelectLinkedInPost>,
-  ctx: ProcessingContext
+  ctx: ProcessingContext,
 ): Promise<void> {
   const { batchId, resumeText, apiKey, model } = ctx;
 
@@ -90,7 +98,10 @@ export async function processLinkedInBatch(
       const [inserted] = await db
         .insert(linkedinPosts)
         .values(data)
-        .onConflictDoUpdate({ target: linkedinPosts.contentHash, set: { batchId, updatedAt: new Date() } })
+        .onConflictDoUpdate({
+          target: linkedinPosts.contentHash,
+          set: { batchId, updatedAt: new Date() },
+        })
         .returning();
       postIds.set(post.contentHash, inserted.id);
     }
@@ -119,22 +130,40 @@ export async function processLinkedInBatch(
   }
 
   if (tasks.length === 0) {
-    console.log(`[LinkedIn Batch] ${batchId} complete — all ${posts.length} posts reused from cache`);
+    console.log(
+      `[LinkedIn Batch] ${batchId} complete — all ${posts.length} posts reused from cache`,
+    );
     return;
   }
 
   // Step 2: Run lightweight programmer-job filter in parallel
-  console.log(`[LinkedIn Batch] Running programmer filter for ${tasks.length} posts`);
+  console.log(
+    `[LinkedIn Batch] Running programmer filter for ${tasks.length} posts`,
+  );
   const filterResults = await runWithLimit(
     tasks.map(({ post, postId }) => async () => {
       try {
-        const result = await classifyIsProgrammerJob(post.postContent, apiKey, model);
-        return { postId, contentHash: post.contentHash, result, error: null as string | null };
+        const result = await classifyIsProgrammerJob(
+          post.postContent,
+          apiKey,
+          model,
+        );
+        return {
+          postId,
+          contentHash: post.contentHash,
+          result,
+          error: null as string | null,
+        };
       } catch (err) {
-        return { postId, contentHash: post.contentHash, result: null, error: (err as Error).message };
+        return {
+          postId,
+          contentHash: post.contentHash,
+          result: null,
+          error: (err as Error).message,
+        };
       }
     }),
-    CONCURRENCY
+    CONCURRENCY,
   );
 
   // Step 3: For non-programmer jobs, save early result and skip full analysis
@@ -161,11 +190,11 @@ export async function processLinkedInBatch(
         .update(linkedinPosts)
         .set({
           isJob: false,
-          title: fr.result.title || 'Unknown',
-          company: fr.result.company || 'Unknown',
+          title: fr.result.title || "Unknown",
+          company: fr.result.company || "Unknown",
           score: 0,
-          recommendation: 'Skip',
-          summary: 'Not a programmer/tech job — filtered out',
+          recommendation: "Skip",
+          summary: "Not a programmer/tech job — filtered out",
           aiAnalyzed: true,
           updatedAt: new Date(),
         })
@@ -180,11 +209,18 @@ export async function processLinkedInBatch(
 
   // Step 4: Run full AI analysis only for programmer jobs
   if (fullAnalysisTasks.length > 0) {
-    console.log(`[LinkedIn Batch] Running full analysis for ${fullAnalysisTasks.length} programmer jobs`);
+    console.log(
+      `[LinkedIn Batch] Running full analysis for ${fullAnalysisTasks.length} programmer jobs`,
+    );
     const aiResults = await runWithLimit(
       fullAnalysisTasks.map(({ post, postId }) => async () => {
         try {
-          const aiResult = await analyzeLinkedInPost(post.postContent, resumeText, apiKey, model);
+          const aiResult = await analyzeLinkedInPost(
+            post.postContent,
+            resumeText,
+            apiKey,
+            model,
+          );
           analyzedCount++;
           return { postId, aiResult, error: null as string | null };
         } catch (err) {
@@ -192,7 +228,7 @@ export async function processLinkedInBatch(
           return { postId, aiResult: null, error: (err as Error).message };
         }
       }),
-      CONCURRENCY
+      CONCURRENCY,
     );
 
     for (const result of aiResults) {
@@ -230,6 +266,6 @@ export async function processLinkedInBatch(
   }
 
   console.log(
-    `[LinkedIn Batch] ${batchId} complete — full analysis: ${analyzedCount}, reused: ${reusedCount}, skipped (non-programmer): ${skippedCount}, failed: ${failedCount}, total: ${posts.length}`
+    `[LinkedIn Batch] ${batchId} complete — full analysis: ${analyzedCount}, reused: ${reusedCount}, skipped (non-programmer): ${skippedCount}, failed: ${failedCount}, total: ${posts.length}`,
   );
 }

@@ -8,7 +8,7 @@ export const qk = {
   settings: () => ['settings'] as const,
   stats: () => ['stats'] as const,
   openrouterCredits: () => ['openrouter', 'credits'] as const,
-  linkedinPosts: (page?: number, filters?: Record<string, unknown>) => ['linkedin-posts', page ?? 1, filters ?? {}] as const,
+  linkedinPosts: (page?: number, filters?: Record<string, unknown>) => page === undefined && filters === undefined ? (['linkedin-posts'] as const) : (['linkedin-posts', page ?? 1, filters ?? {}] as const),
   linkedinPost: (id: number) => ['linkedin-post', id] as const,
   linkedinBatch: (batchId: string) => ['linkedin-batch', batchId] as const,
   linkedinBatches: () => ['linkedin-batches'] as const,
