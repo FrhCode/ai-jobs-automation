@@ -124,21 +124,33 @@ export function LinkedInFeedPage() {
     setUploadPhase('uploading');
     setUploadError(null);
 
-    for (let i = 0; i < totalChunks; i++) {
-      if (statuses[i] === 'done') continue;
-      const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      try {
-        await uploadLinkedInChunk(currentUploadId, i, totalChunks, chunk);
-        statuses = statuses.map((s, idx) => (idx === i ? 'done' : s));
-        setChunkStatuses([...statuses]);
-      } catch (err) {
-        statuses = statuses.map((s, idx) => (idx === i ? 'failed' : s));
-        setChunkStatuses([...statuses]);
-        setUploadPhase('error');
-        setUploadError(err instanceof Error ? err.message : 'Chunk upload failed');
-        return;
-      }
+    const CONCURRENCY = 5;
+    const pending = Array.from({ length: totalChunks }, (_, i) => i).filter((i) => statuses[i] !== 'done');
+    let hasError = false;
+
+    for (let offset = 0; offset < pending.length; offset += CONCURRENCY) {
+      if (hasError) break;
+      const batch = pending.slice(offset, offset + CONCURRENCY);
+      await Promise.all(
+        batch.map(async (i) => {
+          if (hasError) return;
+          const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+          try {
+            await uploadLinkedInChunk(currentUploadId!, i, totalChunks, chunk);
+            statuses = statuses.map((s, idx) => (idx === i ? 'done' : s));
+            setChunkStatuses([...statuses]);
+          } catch (err) {
+            hasError = true;
+            statuses = statuses.map((s, idx) => (idx === i ? 'failed' : s));
+            setChunkStatuses([...statuses]);
+            setUploadPhase('error');
+            setUploadError(err instanceof Error ? err.message : 'Chunk upload failed');
+          }
+        })
+      );
     }
+
+    if (hasError) return;
 
     try {
       const result = await finalizeLinkedInUpload(currentUploadId, file.name);
@@ -394,7 +406,7 @@ export function LinkedInFeedPage() {
             <div className="flex items-center justify-center gap-2">
               <div className="w-4 h-4 border-2 border-cyan/30 border-t-cyan rounded-full animate-spin" />
               <span className="text-xs text-cyan">
-                Uploading {chunkStatuses.filter(s => s === 'done').length} / {chunkStatuses.length} chunks…
+                Uploading {chunkStatuses.length > 0 ? Math.round((chunkStatuses.filter(s => s === 'done').length / chunkStatuses.length) * 100) : 0}%…
               </span>
             </div>
             <div className="w-full max-w-xs mx-auto h-1.5 bg-surface-elevated rounded-full overflow-hidden">
@@ -414,7 +426,7 @@ export function LinkedInFeedPage() {
           <div className="flex-1 min-w-0">
             <p className="text-sm text-rose">{uploadError}</p>
             <p className="text-xs text-text-muted mt-0.5">
-              {chunkStatuses.filter(s => s === 'done').length} / {chunkStatuses.length} chunks uploaded
+              {chunkStatuses.length > 0 ? Math.round((chunkStatuses.filter(s => s === 'done').length / chunkStatuses.length) * 100) : 0}% uploaded before error
             </p>
           </div>
           <button

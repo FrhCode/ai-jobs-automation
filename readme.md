@@ -138,7 +138,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.6** (Current)
+**1.1.7** (Current)
+
+- **Parallel Chunk Upload** — LinkedIn HTML uploads now send 5 chunks concurrently; progress shown as percentage
+
+**1.1.6**
 
 - **Email 24h Warning** — warns when you open "Mail Client" within 24h of the last send
 - **Reminder Presets** — set 12h / 1 day / after-1-day reminders on LinkedIn posts; view and dismiss via /reminders
