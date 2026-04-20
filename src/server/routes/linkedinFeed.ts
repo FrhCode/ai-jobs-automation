@@ -1,6 +1,6 @@
 import Elysia from 'elysia';
 import { z } from 'zod';
-import { eq, inArray, desc, asc, sql, and, gte } from 'drizzle-orm';
+import { eq, inArray, desc, asc, sql, and, gte, isNotNull, lte } from 'drizzle-orm';
 import { db } from '../db';
 import { linkedinPosts, resume, settings, linkedinPostQuestions } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
@@ -8,40 +8,104 @@ import { parseLinkedInHtml } from '../lib/linkedinParser';
 import type { ParsedPost } from '../lib/linkedinParser';
 import { processLinkedInBatch } from '../lib/linkedinProcessor';
 import { generateCoverLetter, generateAnswer, generateApplicationEmail } from '../lib/aiAnalyzer';
+import { mkdir, writeFile, readFile, rm, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 
 export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
   .use(authPlugin)
 
-  .post('/linkedin-feed/parse', async ({ request, set }) => {
-    const formData = await request.formData();
-    const file = formData.get('file');
-    if (!file || !(file instanceof Blob)) {
+  .post('/linkedin-feed/upload/init', async ({ set }) => {
+    const uploadId = `upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const chunksDir = join(process.env.UPLOADS_DIR || './uploads', 'chunks', uploadId);
+    await mkdir(chunksDir, { recursive: true });
+    return { uploadId };
+  }, {
+    requireAuth: true,
+  })
+
+  .post('/linkedin-feed/upload/chunk', async ({ body, set }) => {
+    const { uploadId, chunkIndex, totalChunks } = body;
+    const CHUNK_SIZE_LIMIT = 512 * 1024; // 512 KB
+    const MAX_CHUNKS = 200; // 100 MB total
+
+    if (totalChunks > MAX_CHUNKS) {
       set.status = 400;
-      return { message: 'No file uploaded' };
+      return { message: `File too large. Maximum 100 MB allowed.` };
     }
 
-    const rawFilename = (file as File).name || 'linkedin.html';
+    const chunksDir = join(process.env.UPLOADS_DIR || './uploads', 'chunks', uploadId);
+    const chunkPath = join(chunksDir, `chunk-${String(chunkIndex).padStart(6, '0')}`);
+
+    const raw = body.data;
+    let chunkBuffer: Buffer;
+    if (raw instanceof Blob) {
+      chunkBuffer = Buffer.from(await raw.arrayBuffer());
+    } else if (typeof raw === 'string') {
+      chunkBuffer = Buffer.from(raw, 'binary');
+    } else {
+      chunkBuffer = Buffer.from(raw as ArrayBuffer);
+    }
+
+    if (chunkBuffer.length > CHUNK_SIZE_LIMIT) {
+      set.status = 413;
+      return { message: 'Chunk too large. Max 512 KB per chunk.' };
+    }
+
+    await writeFile(chunkPath, chunkBuffer);
+    return { received: chunkIndex };
+  }, {
+    requireAuth: true,
+    body: z.object({
+      uploadId: z.string().min(1),
+      chunkIndex: z.coerce.number().int().min(0),
+      totalChunks: z.coerce.number().int().min(1),
+      data: z.any(),
+    }),
+  })
+
+  .post('/linkedin-feed/upload/finalize', async ({ body, set }) => {
+    const { uploadId, filename } = body;
+    const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100 MB
+
+    const rawFilename = filename || 'linkedin.html';
     const isHtml = rawFilename.toLowerCase().endsWith('.html') || rawFilename.toLowerCase().endsWith('.htm');
     if (!isHtml) {
       set.status = 400;
       return { message: 'Only HTML files are allowed' };
     }
 
-    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
-    const buffer = Buffer.from(await file.arrayBuffer());
-    if (buffer.length > MAX_FILE_SIZE) {
-      set.status = 413;
-      return { message: 'File too large. Max 10MB.' };
+    const chunksDir = join(process.env.UPLOADS_DIR || './uploads', 'chunks', uploadId);
+    let chunkFiles: string[];
+    try {
+      chunkFiles = (await readdir(chunksDir)).sort();
+    } catch {
+      set.status = 400;
+      return { message: 'Upload session not found or expired' };
     }
 
-    const html = buffer.toString('utf-8');
+    if (chunkFiles.length === 0) {
+      set.status = 400;
+      return { message: 'No chunks received' };
+    }
+
+    const parts = await Promise.all(chunkFiles.map((f) => readFile(join(chunksDir, f))));
+    const assembled = Buffer.concat(parts);
+
+    // Cleanup temp chunks
+    rm(chunksDir, { recursive: true, force: true }).catch(() => {});
+
+    if (assembled.length > MAX_TOTAL_SIZE) {
+      set.status = 413;
+      return { message: 'File too large. Maximum 100 MB allowed.' };
+    }
+
+    const html = assembled.toString('utf-8');
     const parsedPosts = parseLinkedInHtml(html);
 
     if (parsedPosts.length === 0) {
       return { batchId: null, total: 0, matched: 0, status: 'empty', message: 'No posts found in HTML' };
     }
 
-    // Filter by keywords
     const seen = new Set<string>();
     const keywordMatchedPosts = parsedPosts.filter((p) => {
       if (p.matchedKeywords.length === 0 || seen.has(p.contentHash)) return false;
@@ -55,7 +119,6 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
 
     const batchId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-    // Deduplication: check existing hashes
     const hashes = keywordMatchedPosts.map((p) => p.contentHash);
     const existingRows = await db
       .select()
@@ -64,7 +127,6 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
 
     const existingMap = new Map(existingRows.map((r) => [r.contentHash, r]));
 
-    // Get resume and AI settings
     const [resumeRow, apiKeyRow, modelRow] = await Promise.all([
       db.select().from(resume).limit(1),
       db.select().from(settings).where(eq(settings.key, 'openrouter_api_key')).limit(1),
@@ -75,7 +137,6 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
     const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
     const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
 
-    // Trigger background processing (don't await)
     processLinkedInBatch(keywordMatchedPosts, existingMap, {
       batchId,
       resumeText,
@@ -94,6 +155,10 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
     };
   }, {
     requireAuth: true,
+    body: z.object({
+      uploadId: z.string().min(1),
+      filename: z.string().optional(),
+    }),
   })
 
   .get('/linkedin-feed/batches', async () => {
@@ -262,6 +327,25 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
     requireAuth: true,
   })
 
+  .get('/linkedin-posts/reminders', async () => {
+    const rows = await db
+      .select({
+        id: linkedinPosts.id,
+        authorName: linkedinPosts.authorName,
+        company: linkedinPosts.company,
+        title: linkedinPosts.title,
+        reminderAt: linkedinPosts.reminderAt,
+        appStatus: linkedinPosts.appStatus,
+        emailSentAt: linkedinPosts.emailSentAt,
+      })
+      .from(linkedinPosts)
+      .where(isNotNull(linkedinPosts.reminderAt))
+      .orderBy(asc(linkedinPosts.reminderAt));
+    return rows;
+  }, {
+    requireAuth: true,
+  })
+
   .get('/linkedin-posts/:id', async ({ params, set }) => {
     const [post] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
     if (!post) {
@@ -285,6 +369,8 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
     if (body.appStatus !== undefined) updateData.appStatus = body.appStatus;
     if (body.appNotes !== undefined) updateData.appNotes = body.appNotes;
     if (body.appliedAt !== undefined) updateData.appliedAt = body.appliedAt ? new Date(body.appliedAt) : null;
+    if (body.emailSentAt !== undefined) updateData.emailSentAt = body.emailSentAt ? new Date(body.emailSentAt) : null;
+    if (body.reminderAt !== undefined) updateData.reminderAt = body.reminderAt ? new Date(body.reminderAt) : null;
 
     const [updated] = await db
       .update(linkedinPosts)
@@ -300,6 +386,8 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       appStatus: z.string().optional(),
       appNotes: z.string().optional(),
       appliedAt: z.string().datetime().optional().nullable(),
+      emailSentAt: z.string().datetime().optional().nullable(),
+      reminderAt: z.string().datetime().optional().nullable(),
     }),
   })
 

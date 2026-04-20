@@ -201,20 +201,48 @@ export async function getOpenRouterCredits() {
   return request<OpenRouterCredits>('/api/openrouter/credits');
 }
 
-// LinkedIn Feed
-export async function parseLinkedInFeed(file: File) {
+// LinkedIn Feed — chunked upload
+export async function initLinkedInUpload(): Promise<{ uploadId: string }> {
+  return request<{ uploadId: string }>('/api/linkedin-feed/upload/init', { method: 'POST' });
+}
+
+export async function uploadLinkedInChunk(uploadId: string, chunkIndex: number, totalChunks: number, data: Blob): Promise<{ received: number }> {
   const formData = new FormData();
-  formData.append('file', file);
-  const res = await fetch('/api/linkedin-feed/parse', {
+  formData.append('uploadId', uploadId);
+  formData.append('chunkIndex', String(chunkIndex));
+  formData.append('totalChunks', String(totalChunks));
+  formData.append('data', data);
+  const res = await fetch('/api/linkedin-feed/upload/chunk', {
     method: 'POST',
     body: formData,
     credentials: 'include',
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: 'Parse failed' }));
+    const err = await res.json().catch(() => ({ message: 'Chunk upload failed' }));
     throw new Error(err.message);
   }
-  return res.json() as Promise<{ batchId: string | null; total: number; matched: number; status: string; message?: string }>;
+  return res.json();
+}
+
+export async function finalizeLinkedInUpload(uploadId: string, filename: string): Promise<{ batchId: string | null; total: number; matched: number; status: string; message?: string }> {
+  return request('/api/linkedin-feed/upload/finalize', {
+    method: 'POST',
+    body: JSON.stringify({ uploadId, filename }),
+  });
+}
+
+export async function parseLinkedInFeed(file: File) {
+  const CHUNK_SIZE = 512 * 1024;
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+  const { uploadId } = await initLinkedInUpload();
+
+  for (let i = 0; i < totalChunks; i++) {
+    const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+    await uploadLinkedInChunk(uploadId, i, totalChunks, chunk);
+  }
+
+  return finalizeLinkedInUpload(uploadId, file.name);
 }
 
 export async function getLinkedInBatches() {
@@ -258,11 +286,15 @@ export async function getLinkedInPost(id: number) {
   return request<LinkedInPost>(`/api/linkedin-posts/${id}`);
 }
 
-export async function updateLinkedInPost(id: number, body: { appStatus?: string; appNotes?: string; appliedAt?: string | null }) {
+export async function updateLinkedInPost(id: number, body: { appStatus?: string; appNotes?: string; appliedAt?: string | null; emailSentAt?: string | null; reminderAt?: string | null }) {
   return request<LinkedInPost>(`/api/linkedin-posts/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   });
+}
+
+export async function getLinkedInReminders() {
+  return request<import('@/types/data').LinkedInReminder[]>('/api/linkedin-posts/reminders');
 }
 
 export async function generateLinkedInCoverLetter(id: number) {

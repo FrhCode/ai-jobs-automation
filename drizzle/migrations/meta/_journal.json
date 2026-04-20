@@ -22,6 +22,13 @@
       "when": 1776644951812,
       "tag": "0002_puzzling_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776695552372,
+      "tag": "0003_strong_cannonball",
+      "breakpoints": true
     }
   ]
 }

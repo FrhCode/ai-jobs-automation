@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
+  Bell,
   Briefcase,
   PlusCircle,
   ListOrdered,
@@ -17,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useLogout } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
+import { useLinkedInPostReminders } from '@/hooks/useLinkedInFeed';
 import { useState, useEffect } from 'react';
 
 const navItems = [
@@ -25,6 +27,7 @@ const navItems = [
   { path: '/queue', label: 'Queue', icon: ListOrdered },
   { path: '/resume', label: 'Resume', icon: FileText },
   { path: '/linkedin-feed', label: 'LinkedIn Feed', icon: Rss, defaultSearch: 'status=not_applied' },
+  { path: '/reminders', label: 'Reminders', icon: Bell },
   { path: '/stats', label: 'Stats', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -36,6 +39,8 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [themeCooldown, setThemeCooldown] = useState(false);
+  const { data: reminders } = useLinkedInPostReminders();
+  const dueCount = reminders?.filter((r) => r.reminderAt && new Date(r.reminderAt).getTime() <= Date.now()).length ?? 0;
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -121,6 +126,7 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
             const Icon = item.icon;
             const active = location.pathname.startsWith(item.path);
             const to = item.defaultSearch ? `${item.path}?${item.defaultSearch}` : item.path;
+            const badge = item.path === '/reminders' && dueCount > 0 ? dueCount : 0;
             return (
               <Link
                 key={item.path}
@@ -139,6 +145,11 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
                   )}
                 />
                 {item.label}
+                {badge > 0 && (
+                  <span className="ml-auto min-w-4.5 h-4.5 rounded-full bg-rose text-white text-[10px] font-bold flex items-center justify-center px-1">
+                    {badge}
+                  </span>
+                )}
               </Link>
             );
           })}

@@ -138,7 +138,15 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.5** (Current)
+**1.1.6** (Current)
+
+- **Email 24h Warning** — warns when you open "Mail Client" within 24h of the last send
+- **Reminder Presets** — set 12h / 1 day / after-1-day reminders on LinkedIn posts; view and dismiss via /reminders
+- **Chunked LinkedIn HTML Upload** — upload up to 100 MB in 512 KB chunks with progress bar and per-chunk retry
+- **Application Tracking Moved to Top** — status + notes now appear near the top on both Job Detail and LinkedIn Post Detail pages
+- **View Original Link Moved to Top** — job page external link now sits next to Application Tracking
+
+**1.1.5**
 
 - **Update AI Promt For Cover Letter**
 

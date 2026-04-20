@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/queryKeys';
 import {
-  parseLinkedInFeed,
   getLinkedInPosts,
   getLinkedInPost,
   getLinkedInBatches,
@@ -15,6 +14,7 @@ import {
   updateLinkedInPostQuestion,
   deleteLinkedInPostQuestion,
   deleteLinkedInPost,
+  getLinkedInReminders,
 } from '@/api';
 
 export function useLinkedInPosts(page = 1, filters: { isJob?: boolean; recommendation?: string; minScore?: number; appStatus?: string } = {}) {
@@ -32,15 +32,6 @@ export function useLinkedInPost(id: number) {
   });
 }
 
-export function useParseLinkedInFeed() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: parseLinkedInFeed,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.linkedinPosts() });
-    },
-  });
-}
 
 export function useLinkedInBatchPolling(batchId: string | null) {
   return useQuery({
@@ -60,12 +51,21 @@ export function useLinkedInBatchPolling(batchId: string | null) {
 export function useUpdateLinkedInPost() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: number; appStatus?: string; appNotes?: string; appliedAt?: string | null }) =>
+    mutationFn: ({ id, ...body }: { id: number; appStatus?: string; appNotes?: string; appliedAt?: string | null; emailSentAt?: string | null; reminderAt?: string | null }) =>
       updateLinkedInPost(id, body),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: qk.linkedinPost(vars.id) });
       qc.invalidateQueries({ queryKey: qk.linkedinPosts() });
+      qc.invalidateQueries({ queryKey: qk.linkedinReminders() });
     },
+  });
+}
+
+export function useLinkedInPostReminders() {
+  return useQuery({
+    queryKey: qk.linkedinReminders(),
+    queryFn: getLinkedInReminders,
+    staleTime: 60_000,
   });
 }
 

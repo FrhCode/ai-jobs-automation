@@ -250,6 +250,58 @@ export function JobDetailPanel({
         </div>
       </div>
 
+      {/* Application Tracking */}
+      <div className="glass-card rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">
+            Application Tracking
+          </h3>
+          <a
+            href={job.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-sm font-medium text-cyan hover:underline"
+          >
+            View Original
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+        <div className="space-y-4">
+          <Field>
+            <FieldLabel>Status</FieldLabel>
+            <Select
+              value={job.appStatus ?? undefined}
+              onChange={(e) => onUpdate({ appStatus: e.target.value })}
+            >
+              {APP_STATUS.map((s) => (
+                <option key={s} value={s}>
+                  {APP_STATUS_LABEL[s]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel>Notes</FieldLabel>
+            <Textarea
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              onBlur={() => {
+                if (notesDraft !== (job.appNotes ?? "")) {
+                  onUpdate({ appNotes: notesDraft });
+                }
+              }}
+              rows={3}
+              placeholder="Add notes about this application…"
+            />
+          </Field>
+          {job.appliedAt && (
+            <p className="text-xs text-text-muted font-mono">
+              Applied {new Date(job.appliedAt).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Score & Recommendation */}
       <div className="glass-card rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
@@ -477,47 +529,6 @@ export function JobDetailPanel({
         )}
       </div>
 
-      {/* Application Tracking */}
-      <div className="glass-card rounded-xl p-5 space-y-4">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">
-          Application Tracking
-        </h3>
-        <div className="space-y-4">
-          <Field>
-            <FieldLabel>Status</FieldLabel>
-            <Select
-              value={job.appStatus ?? undefined}
-              onChange={(e) => onUpdate({ appStatus: e.target.value })}
-            >
-              {APP_STATUS.map((s) => (
-                <option key={s} value={s}>
-                  {APP_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel>Notes</FieldLabel>
-            <Textarea
-              value={notesDraft}
-              onChange={(e) => setNotesDraft(e.target.value)}
-              onBlur={() => {
-                if (notesDraft !== (job.appNotes ?? "")) {
-                  onUpdate({ appNotes: notesDraft });
-                }
-              }}
-              rows={3}
-              placeholder="Add notes about this application…"
-            />
-          </Field>
-          {job.appliedAt && (
-            <p className="text-xs text-text-muted font-mono">
-              Applied {new Date(job.appliedAt).toLocaleDateString()}
-            </p>
-          )}
-        </div>
-      </div>
-
       {/* Actions */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
         <button
@@ -527,15 +538,6 @@ export function JobDetailPanel({
           <RefreshCw className="w-3.5 h-3.5" />
           Re-analyze
         </button>
-        <a
-          href={job.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="sm:ml-auto flex items-center justify-center gap-1.5 text-sm font-medium text-cyan hover:underline"
-        >
-          View Original
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
       </div>
     </div>
   );

@@ -101,6 +101,8 @@ export const linkedinPosts = pgTable('linkedin_posts', {
   emailSubject: text('email_subject'),
   emailBody: text('email_body'),
   appliedAt: timestamp('applied_at', { withTimezone: true }),
+  emailSentAt: timestamp('email_sent_at', { withTimezone: true }),
+  reminderAt: timestamp('reminder_at', { withTimezone: true }),
   applyUrl: text('apply_url'),
   contactEmail: text('contact_email'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

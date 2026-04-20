@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
@@ -15,12 +15,12 @@ import {
 } from '@/components/ui/dialog';
 import {
   useLinkedInPosts,
-  useParseLinkedInFeed,
   useLinkedInBatchPolling,
   useDeleteLinkedInPost,
   useRetryLinkedInBatch,
   useUpdateLinkedInPost,
 } from '@/hooks/useLinkedInFeed';
+import { initLinkedInUpload, uploadLinkedInChunk, finalizeLinkedInUpload } from '@/api';
 import {
   Upload,
   Rss,
@@ -82,11 +82,21 @@ export function LinkedInFeedPage() {
   };
 
   const { data, isLoading } = useLinkedInPosts(page, filters);
-  const parse = useParseLinkedInFeed();
   const batch = useLinkedInBatchPolling(activeBatchId);
   const del = useDeleteLinkedInPost();
   const retry = useRetryLinkedInBatch();
   const update = useUpdateLinkedInPost();
+
+  // Chunked upload state
+  const CHUNK_SIZE = 512 * 1024;
+  type ChunkStatus = 'pending' | 'done' | 'failed';
+  type UploadPhase = 'idle' | 'uploading' | 'error' | 'done';
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase>('idle');
+  const [chunkStatuses, setChunkStatuses] = useState<ChunkStatus[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<{ batchId: string | null; total: number; matched: number; status: string; message?: string } | null>(null);
+  const uploadIdRef = useRef<string | null>(null);
+  const uploadFileRef = useRef<File | null>(null);
 
   const updateUrl = (updates: Record<string, string | undefined>) => {
     const sp = new URLSearchParams(searchParams);
@@ -97,18 +107,66 @@ export function LinkedInFeedPage() {
     setSearchParams(sp);
   };
 
+  const runUpload = async (file: File, existingUploadId?: string, existingStatuses?: ChunkStatus[]) => {
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    let statuses: ChunkStatus[] = existingStatuses ?? new Array(totalChunks).fill('pending');
+
+    let currentUploadId = existingUploadId;
+    if (!currentUploadId) {
+      const { uploadId } = await initLinkedInUpload();
+      currentUploadId = uploadId;
+      uploadIdRef.current = uploadId;
+      uploadFileRef.current = file;
+      statuses = new Array(totalChunks).fill('pending');
+      setChunkStatuses(statuses);
+    }
+
+    setUploadPhase('uploading');
+    setUploadError(null);
+
+    for (let i = 0; i < totalChunks; i++) {
+      if (statuses[i] === 'done') continue;
+      const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      try {
+        await uploadLinkedInChunk(currentUploadId, i, totalChunks, chunk);
+        statuses = statuses.map((s, idx) => (idx === i ? 'done' : s));
+        setChunkStatuses([...statuses]);
+      } catch (err) {
+        statuses = statuses.map((s, idx) => (idx === i ? 'failed' : s));
+        setChunkStatuses([...statuses]);
+        setUploadPhase('error');
+        setUploadError(err instanceof Error ? err.message : 'Chunk upload failed');
+        return;
+      }
+    }
+
+    try {
+      const result = await finalizeLinkedInUpload(currentUploadId, file.name);
+      setUploadResult(result);
+      setUploadPhase('done');
+      if (result.batchId) updateUrl({ batch: result.batchId });
+    } catch (err) {
+      setUploadPhase('error');
+      setUploadError(err instanceof Error ? err.message : 'Finalize failed');
+    }
+  };
+
   const onDrop = (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
-    if (file) {
-      updateUrl({ batch: undefined });
-      parse.mutate(file, {
-        onSuccess: (res) => {
-          if (res.batchId) {
-            updateUrl({ batch: res.batchId });
-          }
-        },
-      });
-    }
+    if (!file) return;
+    updateUrl({ batch: undefined });
+    uploadIdRef.current = null;
+    uploadFileRef.current = null;
+    setChunkStatuses([]);
+    setUploadPhase('idle');
+    setUploadResult(null);
+    setUploadError(null);
+    runUpload(file);
+  };
+
+  const handleRetryFailed = () => {
+    if (!uploadFileRef.current || !uploadIdRef.current) return;
+    runUpload(uploadFileRef.current, uploadIdRef.current, chunkStatuses);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -314,12 +372,14 @@ export function LinkedInFeedPage() {
         {...getRootProps()}
         className={cn(
           'border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all',
-          isDragActive
-            ? 'border-cyan bg-cyan-dim'
-            : 'border-border-subtle hover:border-border-hover hover:bg-surface-elevated/60'
+          uploadPhase === 'uploading'
+            ? 'border-cyan/40 bg-cyan/5 cursor-default pointer-events-none'
+            : isDragActive
+              ? 'border-cyan bg-cyan-dim'
+              : 'border-border-subtle hover:border-border-hover hover:bg-surface-elevated/60'
         )}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} disabled={uploadPhase === 'uploading'} />
         <div className="w-12 h-12 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-center mx-auto mb-4">
           <Upload className={cn('w-5 h-5', isDragActive ? 'text-cyan' : 'text-text-muted')} />
         </div>
@@ -327,15 +387,45 @@ export function LinkedInFeedPage() {
           {isDragActive ? 'Drop HTML here' : 'Drag & drop your saved LinkedIn HTML, or click to select'}
         </p>
         <p className="text-xs text-text-muted mt-1.5">
-          Only .html files are supported. Max 10MB.
+          Only .html files are supported. Max 100 MB.
         </p>
-        {parse.isPending && (
-          <div className="flex items-center justify-center gap-2 mt-3">
-            <div className="w-4 h-4 border-2 border-cyan/30 border-t-cyan rounded-full animate-spin" />
-            <span className="text-xs text-cyan">Parsing and starting analysis…</span>
+        {uploadPhase === 'uploading' && chunkStatuses.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-cyan/30 border-t-cyan rounded-full animate-spin" />
+              <span className="text-xs text-cyan">
+                Uploading {chunkStatuses.filter(s => s === 'done').length} / {chunkStatuses.length} chunks…
+              </span>
+            </div>
+            <div className="w-full max-w-xs mx-auto h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+              <div
+                className="h-full bg-cyan rounded-full transition-all duration-300"
+                style={{ width: `${(chunkStatuses.filter(s => s === 'done').length / chunkStatuses.length) * 100}%` }}
+              />
+            </div>
           </div>
         )}
       </div>
+
+      {/* Chunk upload error with retry */}
+      {uploadPhase === 'error' && uploadError && (
+        <div className="glass-card rounded-xl p-4 flex items-center gap-3 animate-fade-in-up">
+          <AlertCircle className="w-5 h-5 text-rose shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-rose">{uploadError}</p>
+            <p className="text-xs text-text-muted mt-0.5">
+              {chunkStatuses.filter(s => s === 'done').length} / {chunkStatuses.length} chunks uploaded
+            </p>
+          </div>
+          <button
+            onClick={handleRetryFailed}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose/10 text-rose border border-rose/20 hover:bg-rose/20 transition-all cursor-pointer shrink-0"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Retry failed
+          </button>
+        </div>
+      )}
 
       {/* Processing progress */}
       {isProcessing && batch.data && (
@@ -389,22 +479,15 @@ export function LinkedInFeedPage() {
         </div>
       )}
 
-      {/* Parse result summary (for non-batch responses) */}
-      {parse.data && !activeBatchId && (
+      {/* Upload done (no batch) */}
+      {uploadPhase === 'done' && uploadResult && !activeBatchId && (
         <div className="glass-card rounded-xl p-4 flex items-center gap-3 animate-fade-in-up">
           <CheckCircle2 className="w-5 h-5 text-emerald shrink-0" />
           <div className="text-sm">
             <span className="text-text-primary font-medium">
-              {parse.data.message}
+              {uploadResult.message}
             </span>
           </div>
-        </div>
-      )}
-
-      {parse.error && (
-        <div className="glass-card rounded-xl p-4 flex items-center gap-3 text-rose">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <p className="text-sm">{parse.error.message}</p>
         </div>
       )}
 

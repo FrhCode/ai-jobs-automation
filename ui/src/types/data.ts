@@ -92,8 +92,20 @@ export interface LinkedInPost {
   emailSubject: string | null;
   emailBody: string | null;
   appliedAt: string | null;
+  emailSentAt: string | null;
+  reminderAt: string | null;
   applyUrl: string | null;
   contactEmail: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LinkedInReminder {
+  id: number;
+  authorName: string | null;
+  company: string | null;
+  title: string | null;
+  reminderAt: string | null;
+  appStatus: string | null;
+  emailSentAt: string | null;
 }

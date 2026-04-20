@@ -25,7 +25,10 @@ import type { JobQuestion } from "@/types/data";
 import {
   AlertCircle,
   ArrowLeft,
+  Bell,
+  BellOff,
   Check,
+  Clock,
   Copy,
   ExternalLink,
   FileText,
@@ -315,6 +318,54 @@ export function LinkedInPostDetailPage() {
         )}
       </div>
 
+      {/* Application Tracking */}
+      <div className="glass-card rounded-xl p-5 space-y-4">
+        <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">
+          Application Tracking
+        </h3>
+        <div className="space-y-4">
+          <Field>
+            <FieldLabel>Status</FieldLabel>
+            <Select
+              value={post.appStatus ?? undefined}
+              onChange={(e) => {
+                const status = e.target.value as AppStatus;
+                const appliedAt =
+                  status === "applied" && !post.appliedAt
+                    ? new Date().toISOString()
+                    : post.appliedAt;
+                updatePost.mutate({ id: postId, appStatus: status, appliedAt });
+              }}
+            >
+              {APP_STATUS.map((s) => (
+                <option key={s} value={s}>
+                  {APP_STATUS_LABEL[s]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel>Notes</FieldLabel>
+            <Textarea
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              onBlur={() => {
+                if (notesDraft !== (post.appNotes ?? "")) {
+                  updatePost.mutate({ id: postId, appNotes: notesDraft });
+                }
+              }}
+              rows={3}
+              placeholder="Add notes about this application…"
+            />
+          </Field>
+          {post.appliedAt && (
+            <p className="text-xs text-text-muted font-mono">
+              Applied {new Date(post.appliedAt).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Score & Recommendation */}
       {post.aiAnalyzed && post.isJob !== false && (
         <div className="glass-card rounded-xl p-5">
@@ -463,44 +514,119 @@ export function LinkedInPostDetailPage() {
                     </div>
                   )}
 
-                  {emailSubject && (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs text-text-muted mb-1 block">
-                          Subject
-                        </label>
-                        <input
-                          type="text"
-                          value={emailSubject}
-                          onChange={(e) => setEmailSubject(e.target.value)}
-                          className="w-full text-sm bg-surface-elevated border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-cyan"
-                        />
+                  {emailSubject && (() => {
+                    const sentAt = post.emailSentAt ? new Date(post.emailSentAt) : null;
+                    const hoursSinceSent = sentAt ? (Date.now() - sentAt.getTime()) / (1000 * 60 * 60) : null;
+                    const withinWindow = hoursSinceSent !== null && hoursSinceSent < 24;
+
+                    const setReminder = (hoursFromSent: number) => {
+                      const base = sentAt ?? new Date();
+                      const reminderAt = new Date(base.getTime() + hoursFromSent * 60 * 60 * 1000).toISOString();
+                      updatePost.mutate({ id: postId, reminderAt });
+                    };
+
+                    return (
+                      <div className="space-y-3">
+                        {withinWindow && (
+                          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber/10 border border-amber/20 text-amber text-sm">
+                            <Clock className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span>
+                              You sent an email {Math.round(hoursSinceSent!)} hour{Math.round(hoursSinceSent!) !== 1 ? "s" : ""} ago. Sending again may look spammy.
+                            </span>
+                          </div>
+                        )}
+                        <div>
+                          <label className="text-xs text-text-muted mb-1 block">
+                            Subject
+                          </label>
+                          <input
+                            type="text"
+                            value={emailSubject}
+                            onChange={(e) => setEmailSubject(e.target.value)}
+                            className="w-full text-sm bg-surface-elevated border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-cyan"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-text-muted mb-1 block">
+                            Body
+                          </label>
+                          <Textarea
+                            value={emailBody}
+                            onChange={(e) => setEmailBody(e.target.value)}
+                            rows={10}
+                            className="text-sm leading-relaxed resize-y"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`mailto:${emails[0]}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updatePost.mutate({ id: postId, emailSentAt: new Date().toISOString() });
+                            }}
+                            target="_blank"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                            Open in Mail Client
+                          </a>
+                          <CopyButton text={emailBody} />
+                        </div>
+
+                        {/* Reminder */}
+                        <div className="pt-2 border-t border-border-subtle space-y-2">
+                          {post.reminderAt ? (
+                            <div className="flex items-center justify-between gap-2 text-sm">
+                              <div className="flex items-center gap-1.5 text-text-secondary">
+                                <Bell className="w-3.5 h-3.5 text-cyan" />
+                                Reminder set for{" "}
+                                {new Date(post.reminderAt).toLocaleString(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </div>
+                              <button
+                                onClick={() => updatePost.mutate({ id: postId, reminderAt: null })}
+                                className="flex items-center gap-1 text-xs text-text-muted hover:text-rose transition-colors cursor-pointer"
+                              >
+                                <BellOff className="w-3.5 h-3.5" />
+                                Clear
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              <p className="text-xs text-text-muted">Set a follow-up reminder:</p>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => setReminder(12)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-subtle text-xs text-text-secondary hover:text-cyan hover:border-cyan transition-all cursor-pointer"
+                                >
+                                  <Bell className="w-3 h-3" />
+                                  12 hours
+                                </button>
+                                <button
+                                  onClick={() => setReminder(24)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-subtle text-xs text-text-secondary hover:text-cyan hover:border-cyan transition-all cursor-pointer"
+                                >
+                                  <Bell className="w-3 h-3" />
+                                  1 day
+                                </button>
+                                <button
+                                  onClick={() => setReminder(25)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-subtle text-xs text-text-secondary hover:text-cyan hover:border-cyan transition-all cursor-pointer"
+                                >
+                                  <Bell className="w-3 h-3" />
+                                  After 1 day
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs text-text-muted mb-1 block">
-                          Body
-                        </label>
-                        <Textarea
-                          value={emailBody}
-                          onChange={(e) => setEmailBody(e.target.value)}
-                          rows={10}
-                          className="text-sm leading-relaxed resize-y"
-                        />
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <a
-                          href={`mailto:${emails[0]}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
-                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 transition-all"
-                          onClick={(e) => e.stopPropagation()}
-                          target="_blank"
-                        >
-                          <Mail className="w-3.5 h-3.5" />
-                          Open in Mail Client
-                        </a>
-                        <CopyButton text={emailBody} />
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -692,54 +818,6 @@ export function LinkedInPostDetailPage() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Application Tracking */}
-      <div className="glass-card rounded-xl p-5 space-y-4">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted">
-          Application Tracking
-        </h3>
-        <div className="space-y-4">
-          <Field>
-            <FieldLabel>Status</FieldLabel>
-            <Select
-              value={post.appStatus ?? undefined}
-              onChange={(e) => {
-                const status = e.target.value as AppStatus;
-                const appliedAt =
-                  status === "applied" && !post.appliedAt
-                    ? new Date().toISOString()
-                    : post.appliedAt;
-                updatePost.mutate({ id: postId, appStatus: status, appliedAt });
-              }}
-            >
-              {APP_STATUS.map((s) => (
-                <option key={s} value={s}>
-                  {APP_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel>Notes</FieldLabel>
-            <Textarea
-              value={notesDraft}
-              onChange={(e) => setNotesDraft(e.target.value)}
-              onBlur={() => {
-                if (notesDraft !== (post.appNotes ?? "")) {
-                  updatePost.mutate({ id: postId, appNotes: notesDraft });
-                }
-              }}
-              rows={3}
-              placeholder="Add notes about this application…"
-            />
-          </Field>
-          {post.appliedAt && (
-            <p className="text-xs text-text-muted font-mono">
-              Applied {new Date(post.appliedAt).toLocaleDateString()}
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Actions */}

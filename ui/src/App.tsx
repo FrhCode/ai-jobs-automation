@@ -11,6 +11,7 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { StatsPage } from '@/pages/StatsPage';
 import { LinkedInFeedPage } from '@/pages/LinkedInFeedPage';
 import { LinkedInPostDetailPage } from '@/pages/LinkedInPostDetailPage';
+import { RemindersPage } from '@/pages/RemindersPage';
 import { useAuth } from '@/hooks/useAuth';
 
 const queryClient = new QueryClient({
@@ -52,6 +53,7 @@ function AppRoutes() {
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/linkedin-feed" element={<LinkedInFeedPage />} />
                 <Route path="/linkedin-feed/:id" element={<LinkedInPostDetailPage />} />
+                <Route path="/reminders" element={<RemindersPage />} />
                 <Route path="/" element={<Navigate to="/jobs?appStatus=not_applied&sort=score&dir=desc&page=1&limit=50" replace />} />
               </Routes>
             </Layout>
