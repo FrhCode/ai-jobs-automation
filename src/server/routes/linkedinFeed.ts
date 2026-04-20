@@ -149,7 +149,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       total,
       processed,
       failed,
-      status: processed >= total ? 'completed' : 'processing',
+      status: processed + failed >= total ? 'completed' : 'processing',
       posts,
     };
   }, {
