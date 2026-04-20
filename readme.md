@@ -138,7 +138,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.4** (Current)
+**1.1.5** (Current)
+
+- **Update AI Promt For Cover Letter**
+
+**1.1.4**
 
 - **Add Retry For Failed Batch Linkedin Post**
 

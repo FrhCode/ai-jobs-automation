@@ -198,16 +198,17 @@ ${(job.matchedSkills ?? []).join(", ") || "None listed"}
 ${(job.missingSkills ?? []).join(", ") || "None listed"}
 
 ## Task
-Write a professional cover letter (300-500 words) for this job application. The tone should be confident, enthusiastic, and authentic.
+Write a professional cover letter (300-500 words) for this job application. The tone should be genuine and grounded — do NOT exaggerate or overstate the candidate's experience level.
 
 Requirements:
 1. Address the hiring manager generally (e.g., "Dear Hiring Manager,")
 2. Mention the specific role and company name
-3. Highlight 2-3 key matched skills with concrete examples
-4. Acknowledge any missing skills briefly but frame them as growth opportunities
-5. End with a strong call to action
-6. Do NOT include markdown formatting, headers, or code blocks — just plain text
-7. Return ONLY the cover letter text, nothing else`;
+3. Highlight 2-3 key matched skills with honest, accurate examples drawn strictly from the resume — do not invent or inflate accomplishments
+4. Only claim experience, years, or seniority that is explicitly stated in the resume
+5. Acknowledge any missing skills briefly but frame them as growth opportunities
+6. End with a strong call to action
+7. Do NOT include markdown formatting, headers, or code blocks — just plain text
+8. Return ONLY the cover letter text, nothing else`;
 }
 
 export async function generateCoverLetter(
