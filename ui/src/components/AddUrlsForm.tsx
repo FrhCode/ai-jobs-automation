@@ -1,15 +1,25 @@
-import { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { enqueueSchema } from '@/shared/schemas';
-import { Textarea } from '@/components/ui/textarea';
-import { Field, FieldLabel, FieldError, FieldDescription, FieldGroup } from '@/components/ui/field';
-import { InputGroup, InputGroupAddon, InputGroupText } from '@/components/ui/input-group';
-import { Link2, CheckCircle2, ArrowRight } from 'lucide-react';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupText,
+} from "@/components/ui/input-group";
+import { Textarea } from "@/components/ui/textarea";
+import { enqueueSchema } from "@/shared/schemas";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowRight, CheckCircle2, Link2 } from "lucide-react";
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { z } from "zod";
 
 const rawSchema = z.object({
-  raw: z.string().min(1, 'Enter at least one URL'),
+  raw: z.string().min(1, "Enter at least one URL"),
 });
 
 type RawFormData = z.infer<typeof rawSchema>;
@@ -20,17 +30,23 @@ interface AddUrlsFormProps {
 }
 
 export function AddUrlsForm({ onSubmit, isPending }: AddUrlsFormProps) {
-  const [result, setResult] = useState<{ enqueued: number; duplicates: number } | null>(null);
+  const [result, setResult] = useState<{
+    enqueued: number;
+    duplicates: number;
+  } | null>(null);
   const form = useForm<RawFormData>({
     resolver: zodResolver(rawSchema),
-    defaultValues: { raw: '' },
+    defaultValues: { raw: "" },
   });
 
   return (
     <form
       id="add-urls-form"
       onSubmit={form.handleSubmit((data) => {
-        const urls = data.raw.split('\n').map((l) => l.trim()).filter(Boolean);
+        const urls = data.raw
+          .split("\n")
+          .map((l) => l.trim())
+          .filter(Boolean);
         const parsed = enqueueSchema.safeParse({ urls });
         if (!parsed.success) {
           return;
@@ -47,7 +63,10 @@ export function AddUrlsForm({ onSubmit, isPending }: AddUrlsFormProps) {
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor="add-urls-raw" className="flex items-center gap-1.5">
+              <FieldLabel
+                htmlFor="add-urls-raw"
+                className="flex items-center gap-1.5"
+              >
                 <Link2 className="w-3 h-3" />
                 Job URLs
               </FieldLabel>
@@ -67,11 +86,10 @@ export function AddUrlsForm({ onSubmit, isPending }: AddUrlsFormProps) {
                 </InputGroupAddon>
               </InputGroup>
               <FieldDescription>
-                Paste one URL per line. Duplicate URLs will be skipped automatically.
+                Paste one URL per line. Duplicate URLs will be skipped
+                automatically.
               </FieldDescription>
-              {fieldState.invalid && (
-                <FieldError errors={[fieldState.error]} />
-              )}
+              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
           )}
         />
@@ -97,10 +115,11 @@ export function AddUrlsForm({ onSubmit, isPending }: AddUrlsFormProps) {
       </button>
 
       {result && (
-        <div className="flex items-center gap-2 text-sm text-emerald bg-emerald-glow border border-emerald/20 px-4 py-3 rounded-lg animate-fade-in-up">
+        <div className="flex items-center gap-2 text-sm text-emerald bg-emerald-glow border border-emerald/20 px-4 py-3 rounded-lg">
           <CheckCircle2 className="w-4 h-4" />
-          Enqueued {result.enqueued} URL{result.enqueued !== 1 ? 's' : ''}
-          {result.duplicates > 0 && ` (${result.duplicates} duplicates skipped)`}
+          Enqueued {result.enqueued} URL{result.enqueued !== 1 ? "s" : ""}
+          {result.duplicates > 0 &&
+            ` (${result.duplicates} duplicates skipped)`}
         </div>
       )}
     </form>

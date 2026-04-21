@@ -1,6 +1,16 @@
-import { X, AlertCircle, CheckCircle2, Loader2, History, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useLinkedInBatches, useRetryLinkedInBatch } from '@/hooks/useLinkedInFeed';
+import {
+  useLinkedInBatches,
+  useRetryLinkedInBatch,
+} from "@/hooks/useLinkedInFeed";
+import { cn } from "@/lib/utils";
+import {
+  AlertCircle,
+  CheckCircle2,
+  History,
+  Loader2,
+  RefreshCw,
+  X,
+} from "lucide-react";
 
 interface Props {
   readonly open: boolean;
@@ -9,7 +19,10 @@ interface Props {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -23,20 +36,28 @@ export function BatchHistoryModal({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg glass-card rounded-2xl shadow-2xl flex flex-col max-h-[80vh] animate-fade-in-up">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-lg glass-card rounded-2xl shadow-2xl flex flex-col max-h-[80vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle shrink-0">
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-cyan" />
-            <h2 className="text-sm font-semibold text-text-primary">Batch History</h2>
+            <h2 className="text-sm font-semibold text-text-primary">
+              Batch History
+            </h2>
             {hasFailed && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose/10 text-rose">
                 Has failures
               </span>
             )}
           </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer">
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-all cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -51,22 +72,25 @@ export function BatchHistoryModal({ open, onClose }: Props) {
           )}
 
           {!isLoading && (!batches || batches.length === 0) && (
-            <div className="text-center py-12 text-text-muted text-sm">No batches found.</div>
+            <div className="text-center py-12 text-text-muted text-sm">
+              No batches found.
+            </div>
           )}
 
           {batches?.map((batch) => {
             const isComplete = batch.processed >= batch.total;
             const hasFail = batch.failed > 0;
-            const isRetrying = retry.isPending && retry.variables === batch.batchId;
+            const isRetrying =
+              retry.isPending && retry.variables === batch.batchId;
 
             return (
               <div
                 key={batch.batchId}
                 className={cn(
-                  'rounded-xl p-3.5 border transition-colors',
+                  "rounded-xl p-3.5 border transition-colors",
                   hasFail
-                    ? 'border-rose/20 bg-rose/5'
-                    : 'border-border-subtle bg-surface-elevated/40'
+                    ? "border-rose/20 bg-rose/5"
+                    : "border-border-subtle bg-surface-elevated/40",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -77,7 +101,10 @@ export function BatchHistoryModal({ open, onClose }: Props) {
                       ) : (
                         <Loader2 className="w-3.5 h-3.5 text-cyan animate-spin shrink-0" />
                       )}
-                      <span className="text-xs font-mono text-text-muted truncate max-w-[200px]" title={batch.batchId}>
+                      <span
+                        className="text-xs font-mono text-text-muted truncate max-w-[200px]"
+                        title={batch.batchId}
+                      >
                         {batch.batchId}
                       </span>
                     </div>
@@ -89,7 +116,9 @@ export function BatchHistoryModal({ open, onClose }: Props) {
                           {batch.failed} failed
                         </span>
                       )}
-                      <span className="text-text-muted">{formatDate(batch.createdAt)}</span>
+                      <span className="text-text-muted">
+                        {formatDate(batch.createdAt)}
+                      </span>
                     </div>
                   </div>
 
@@ -114,8 +143,13 @@ export function BatchHistoryModal({ open, onClose }: Props) {
                 {/* Progress bar */}
                 <div className="mt-2.5 w-full h-1 bg-surface-elevated rounded-full overflow-hidden">
                   <div
-                    className={cn('h-full rounded-full transition-all', hasFail ? 'bg-rose/60' : 'bg-cyan')}
-                    style={{ width: `${Math.round((batch.processed / Math.max(batch.total, 1)) * 100)}%` }}
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      hasFail ? "bg-rose/60" : "bg-cyan",
+                    )}
+                    style={{
+                      width: `${Math.round((batch.processed / Math.max(batch.total, 1)) * 100)}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -125,7 +159,9 @@ export function BatchHistoryModal({ open, onClose }: Props) {
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-border-subtle shrink-0 flex justify-between items-center">
-          <span className="text-xs text-text-muted">{batches?.length ?? 0} batches total</span>
+          <span className="text-xs text-text-muted">
+            {batches?.length ?? 0} batches total
+          </span>
           <button
             onClick={() => refetch()}
             className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors cursor-pointer"

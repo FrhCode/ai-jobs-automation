@@ -66,7 +66,7 @@ export function ResumeUpload({
       </div>
 
       {resume && (
-        <div className="glass-card rounded-xl overflow-hidden animate-fade-in-up">
+        <div className="glass-card rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-border-subtle flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-emerald-glow border border-emerald/20 flex items-center justify-center shrink-0">
