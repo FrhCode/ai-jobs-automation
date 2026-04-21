@@ -14,4 +14,5 @@ export const qk = {
   linkedinBatches: () => ['linkedin-batches'] as const,
   linkedinPostQuestions: (id: number) => ['linkedin-post', id, 'questions'] as const,
   linkedinReminders: () => ['linkedin-reminders'] as const,
+  recruiterContact: (email: string) => ['recruiter-contact', email] as const,
 };

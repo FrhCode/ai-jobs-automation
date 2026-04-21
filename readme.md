@@ -138,7 +138,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.9** (Current)
+**1.1.10** (Current)
+
+- **Update Logic Last Email Sent**
+
+**1.1.9**
 
 - **Remove Animation On Linkedin Feed**
 

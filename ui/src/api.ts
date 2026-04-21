@@ -338,3 +338,7 @@ export async function deleteLinkedInPost(id: number) {
     method: 'DELETE',
   });
 }
+
+export async function getRecruiterContact(email: string) {
+  return request<import('@/types/data').RecruiterContact>(`/api/recruiter-contacts/${encodeURIComponent(email)}`);
+}

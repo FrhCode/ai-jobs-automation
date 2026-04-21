@@ -15,6 +15,7 @@ import {
   deleteLinkedInPostQuestion,
   deleteLinkedInPost,
   getLinkedInReminders,
+  getRecruiterContact,
 } from '@/api';
 
 export function useLinkedInPosts(page = 1, filters: { isJob?: boolean; recommendation?: string; minScore?: number; appStatus?: string } = {}) {
@@ -53,11 +54,23 @@ export function useUpdateLinkedInPost() {
   return useMutation({
     mutationFn: ({ id, ...body }: { id: number; appStatus?: string; appNotes?: string; appliedAt?: string | null; emailSentAt?: string | null; reminderAt?: string | null }) =>
       updateLinkedInPost(id, body),
-    onSuccess: (_, vars) => {
+    onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: qk.linkedinPost(vars.id) });
       qc.invalidateQueries({ queryKey: qk.linkedinPosts() });
       qc.invalidateQueries({ queryKey: qk.linkedinReminders() });
+      if (vars.emailSentAt && data.contactEmail) {
+        qc.invalidateQueries({ queryKey: qk.recruiterContact(data.contactEmail) });
+      }
     },
+  });
+}
+
+export function useRecruiterContact(email: string | null) {
+  return useQuery({
+    queryKey: qk.recruiterContact(email ?? ''),
+    queryFn: () => getRecruiterContact(email!),
+    enabled: !!email,
+    retry: false,
   });
 }
 

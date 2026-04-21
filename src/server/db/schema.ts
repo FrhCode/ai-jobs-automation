@@ -123,5 +123,16 @@ export type SelectJobQuestion = typeof jobQuestions.$inferSelect;
 export type InsertJobQuestion = typeof jobQuestions.$inferInsert;
 export type SelectLinkedInPostQuestion = typeof linkedinPostQuestions.$inferSelect;
 export type InsertLinkedInPostQuestion = typeof linkedinPostQuestions.$inferInsert;
+export const recruiterContacts = pgTable('recruiter_contacts', {
+  id: serial('id').primaryKey(),
+  contactEmail: text('contact_email').notNull().unique(),
+  authorName: text('author_name'),
+  lastEmailedAt: timestamp('last_emailed_at', { withTimezone: true }),
+  emailCount: integer('email_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type SelectLinkedInPost = typeof linkedinPosts.$inferSelect;
 export type InsertLinkedInPost = typeof linkedinPosts.$inferInsert;
+export type SelectRecruiterContact = typeof recruiterContacts.$inferSelect;

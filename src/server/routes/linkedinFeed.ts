@@ -2,7 +2,7 @@ import Elysia from 'elysia';
 import { z } from 'zod';
 import { eq, inArray, desc, asc, sql, and, gte, isNotNull, lte } from 'drizzle-orm';
 import { db } from '../db';
-import { linkedinPosts, resume, settings, linkedinPostQuestions } from '../db/schema';
+import { linkedinPosts, resume, settings, linkedinPostQuestions, recruiterContacts } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
 import { parseLinkedInHtml } from '../lib/linkedinParser';
 import type { ParsedPost } from '../lib/linkedinParser';
@@ -378,6 +378,27 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       .where(eq(linkedinPosts.id, params.id))
       .returning();
 
+    // When email is marked as sent, upsert global recruiter contact tracking
+    if (body.emailSentAt && existing.contactEmail) {
+      const sentAt = new Date(body.emailSentAt);
+      await db
+        .insert(recruiterContacts)
+        .values({
+          contactEmail: existing.contactEmail,
+          authorName: existing.authorName,
+          lastEmailedAt: sentAt,
+          emailCount: 1,
+        })
+        .onConflictDoUpdate({
+          target: recruiterContacts.contactEmail,
+          set: {
+            lastEmailedAt: sentAt,
+            emailCount: sql`${recruiterContacts.emailCount} + 1`,
+            updatedAt: new Date(),
+          },
+        });
+    }
+
     return updated;
   }, {
     requireAuth: true,
@@ -615,6 +636,25 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
   }, {
     requireAuth: true,
     params: z.object({ id: z.coerce.number().int().positive(), questionId: z.coerce.number().int().positive() }),
+  })
+
+  .get('/recruiter-contacts/:email', async ({ params, set }) => {
+    const email = decodeURIComponent(params.email);
+    const [contact] = await db
+      .select()
+      .from(recruiterContacts)
+      .where(eq(recruiterContacts.contactEmail, email))
+      .limit(1);
+
+    if (!contact) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    return contact;
+  }, {
+    requireAuth: true,
+    params: z.object({ email: z.string().min(1) }),
   })
 
   .delete('/linkedin-posts/:id', async ({ params, set }) => {

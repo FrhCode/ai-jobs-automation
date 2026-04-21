@@ -12,6 +12,7 @@ import {
   useLinkedInPostQuestions,
   useUpdateLinkedInPost,
   useUpdateLinkedInPostQuestion,
+  useRecruiterContact,
 } from "@/hooks/useLinkedInFeed";
 import { extractEmails, extractUrls } from "@/lib/extractContact";
 import { cn } from "@/lib/utils";
@@ -209,6 +210,11 @@ export function LinkedInPostDetailPage() {
   const generateEmail = useGenerateLinkedInEmail();
   const [emailSubject, setEmailSubject] = useState(post?.emailSubject ?? "");
   const [emailBody, setEmailBody] = useState(post?.emailBody ?? "");
+
+  const emails = post?.contactEmail
+    ? [post.contactEmail]
+    : extractEmails(post?.postContent ?? "");
+  const { data: recruiterContact } = useRecruiterContact(emails[0] ?? null);
 
   // Sync email from post data when it loads (e.g. after refresh)
   useEffect(() => {
@@ -420,9 +426,6 @@ export function LinkedInPostDetailPage() {
         const urls = post.applyUrl
           ? [post.applyUrl]
           : extractUrls(post.postContent);
-        const emails = post.contactEmail
-          ? [post.contactEmail]
-          : extractEmails(post.postContent);
         const hasLinks = urls.length > 0;
         const hasEmails = emails.length > 0;
 
@@ -515,12 +518,14 @@ export function LinkedInPostDetailPage() {
                   )}
 
                   {emailSubject && (() => {
-                    const sentAt = post.emailSentAt ? new Date(post.emailSentAt) : null;
-                    const hoursSinceSent = sentAt ? (Date.now() - sentAt.getTime()) / (1000 * 60 * 60) : null;
+                    const lastEmailedAt = recruiterContact?.lastEmailedAt
+                      ? new Date(recruiterContact.lastEmailedAt)
+                      : post.emailSentAt ? new Date(post.emailSentAt) : null;
+                    const hoursSinceSent = lastEmailedAt ? (Date.now() - lastEmailedAt.getTime()) / (1000 * 60 * 60) : null;
                     const withinWindow = hoursSinceSent !== null && hoursSinceSent < 24;
 
                     const setReminder = (hoursFromSent: number) => {
-                      const base = sentAt ?? new Date();
+                      const base = lastEmailedAt ?? new Date();
                       const reminderAt = new Date(base.getTime() + hoursFromSent * 60 * 60 * 1000).toISOString();
                       updatePost.mutate({ id: postId, reminderAt });
                     };
@@ -531,7 +536,7 @@ export function LinkedInPostDetailPage() {
                           <div className="flex items-start gap-2 p-3 rounded-lg bg-amber/10 border border-amber/20 text-amber text-sm">
                             <Clock className="w-4 h-4 shrink-0 mt-0.5" />
                             <span>
-                              You sent an email {hoursSinceSent! < 1 ? "just now" : `${Math.round(hoursSinceSent!)} hour${Math.round(hoursSinceSent!) !== 1 ? "s" : ""} ago`}. Sending again may look spammy.
+                              You already emailed this recruiter {hoursSinceSent! < 1 ? "just now" : `${Math.round(hoursSinceSent!)} hour${Math.round(hoursSinceSent!) !== 1 ? "s" : ""} ago`}{recruiterContact && recruiterContact.emailCount > 1 ? ` (${recruiterContact.emailCount}× total)` : ""}. Sending again may look spammy.
                             </span>
                           </div>
                         )}

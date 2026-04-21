@@ -100,6 +100,16 @@ export interface LinkedInPost {
   updatedAt: string;
 }
 
+export interface RecruiterContact {
+  id: number;
+  contactEmail: string;
+  authorName: string | null;
+  lastEmailedAt: string | null;
+  emailCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LinkedInReminder {
   id: number;
   authorName: string | null;
