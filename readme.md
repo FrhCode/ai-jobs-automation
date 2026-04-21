@@ -138,7 +138,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.8** (Current)
+**1.1.9** (Current)
+
+- **Remove Animation On Linkedin Feed**
+
+**1.1.8**
 
 - **Email Warning Wording Fix** — "0 hours ago" now correctly shows "just now" when opening mail client immediately after generating an email
 

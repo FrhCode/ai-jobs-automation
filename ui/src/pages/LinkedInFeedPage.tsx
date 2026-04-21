@@ -523,7 +523,7 @@ export function LinkedInFeedPage() {
             <div
               key={post.id}
               onClick={() => navigate(`/linkedin-feed/${post.id}`)}
-              className="glass-card rounded-xl overflow-hidden animate-fade-in-up cursor-pointer hover:border-cyan/30 transition-colors"
+              className="glass-card rounded-xl overflow-hidden cursor-pointer hover:border-cyan/30 transition-colors"
             >
               <div className="p-4 sm:p-5 space-y-3">
                 {/* Author + delete */}
