@@ -2,11 +2,13 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { StatusToggle } from "@/components/StatusToggle";
 import {
   APP_STATUS,
   APP_STATUS_LABEL,
   RECOMMENDATION_COLOR,
 } from "@/shared/constants";
+import { useSettings } from "@/hooks/useSettings";
 import type { Job, JobQuestion } from "@/types/data";
 import {
   ArrowLeft,
@@ -223,6 +225,8 @@ export function JobDetailPanel({
   isCreatingQuestion = false,
 }: JobDetailPanelProps) {
   const navigate = useNavigate();
+  const { data: settings } = useSettings();
+  const statusMode = settings?.ui_status_mode ?? "complete";
   const score = job.score ?? 0;
   const [notesDraft, setNotesDraft] = useState(job.appNotes ?? "");
   const [newQuestion, setNewQuestion] = useState("");
@@ -293,16 +297,23 @@ export function JobDetailPanel({
         <div className="space-y-4">
           <Field>
             <FieldLabel>Status</FieldLabel>
-            <Select
-              value={job.appStatus ?? undefined}
-              onChange={(e) => onUpdate({ appStatus: e.target.value })}
-            >
-              {APP_STATUS.map((s) => (
-                <option key={s} value={s}>
-                  {APP_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </Select>
+            {statusMode === "simplified" ? (
+              <StatusToggle
+                status={job.appStatus}
+                onChange={(status) => onUpdate({ appStatus: status })}
+              />
+            ) : (
+              <Select
+                value={job.appStatus ?? undefined}
+                onChange={(e) => onUpdate({ appStatus: e.target.value })}
+              >
+                {APP_STATUS.map((s) => (
+                  <option key={s} value={s}>
+                    {APP_STATUS_LABEL[s]}
+                  </option>
+                ))}
+              </Select>
+            )}
           </Field>
           <Field>
             <FieldLabel>Notes</FieldLabel>

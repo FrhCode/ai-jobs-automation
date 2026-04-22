@@ -14,6 +14,8 @@ import {
   useUpdateLinkedInPostQuestion,
   useRecruiterContact,
 } from "@/hooks/useLinkedInFeed";
+import { useSettings } from "@/hooks/useSettings";
+import { StatusToggle } from "@/components/StatusToggle";
 import { extractEmails, extractUrls } from "@/lib/extractContact";
 import { cn } from "@/lib/utils";
 import type { AppStatus } from "@/shared/constants";
@@ -217,6 +219,8 @@ export function LinkedInPostDetailPage() {
 
   const { data: post, isLoading } = useLinkedInPost(postId);
   const updatePost = useUpdateLinkedInPost();
+  const { data: settings } = useSettings();
+  const statusMode = settings?.ui_status_mode ?? "complete";
   const generateCoverLetter = useGenerateLinkedInCoverLetter();
   const { data: questionsData, isLoading: questionsLoading } =
     useLinkedInPostQuestions(postId);
@@ -356,23 +360,36 @@ export function LinkedInPostDetailPage() {
         <div className="space-y-4">
           <Field>
             <FieldLabel>Status</FieldLabel>
-            <Select
-              value={post.appStatus ?? undefined}
-              onChange={(e) => {
-                const status = e.target.value as AppStatus;
-                const appliedAt =
-                  status === "applied" && !post.appliedAt
-                    ? new Date().toISOString()
-                    : post.appliedAt;
-                updatePost.mutate({ id: postId, appStatus: status, appliedAt });
-              }}
-            >
-              {APP_STATUS.map((s) => (
-                <option key={s} value={s}>
-                  {APP_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </Select>
+            {statusMode === "simplified" ? (
+              <StatusToggle
+                status={post.appStatus}
+                onChange={(status) => {
+                  const appliedAt =
+                    status === "applied" && !post.appliedAt
+                      ? new Date().toISOString()
+                      : post.appliedAt;
+                  updatePost.mutate({ id: postId, appStatus: status, appliedAt });
+                }}
+              />
+            ) : (
+              <Select
+                value={post.appStatus ?? undefined}
+                onChange={(e) => {
+                  const status = e.target.value as AppStatus;
+                  const appliedAt =
+                    status === "applied" && !post.appliedAt
+                      ? new Date().toISOString()
+                      : post.appliedAt;
+                  updatePost.mutate({ id: postId, appStatus: status, appliedAt });
+                }}
+              >
+                {APP_STATUS.map((s) => (
+                  <option key={s} value={s}>
+                    {APP_STATUS_LABEL[s]}
+                  </option>
+                ))}
+              </Select>
+            )}
           </Field>
           <Field>
             <FieldLabel>Notes</FieldLabel>

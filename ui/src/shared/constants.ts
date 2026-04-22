@@ -3,6 +3,9 @@ export const RECOMMENDATION = ['Apply', 'Consider', 'Skip'] as const;
 export const SCRAPE_STATUS = ['success', 'partial', 'login_wall', 'failed'] as const;
 export const QUEUE_STATUS = ['pending', 'running', 'done', 'failed', 'skipped'] as const;
 
+export const STATUS_MODE = ['complete', 'simplified'] as const;
+export type StatusMode = typeof STATUS_MODE[number];
+
 export type AppStatus = typeof APP_STATUS[number];
 export type Recommendation = typeof RECOMMENDATION[number];
 export type ScrapeStatus = typeof SCRAPE_STATUS[number];

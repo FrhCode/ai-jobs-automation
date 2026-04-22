@@ -9,6 +9,7 @@ import {
   Globe,
   Play,
   Save,
+  SlidersHorizontal,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -226,6 +227,49 @@ export function SettingsForm({
                 {triggerResult.found} jobs, enqueued {triggerResult.newUrls} new
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* UI Mode */}
+      <div className="glass-card rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border-subtle flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-md bg-emerald-dim border border-emerald/15 flex items-center justify-center">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-emerald" />
+          </div>
+          <h3 className="text-sm font-semibold text-text-primary">
+            UI Mode
+          </h3>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+            <div>
+              <p className="text-sm font-medium text-text-primary">
+                Simplified status controls
+              </p>
+              <p className="text-xs text-text-muted mt-0.5">
+                Show only Applied / Not Interested buttons instead of full status dropdown
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={(form.ui_status_mode ?? "complete") === "simplified"}
+              onClick={() =>
+                update("ui_status_mode", (form.ui_status_mode ?? "complete") === "simplified" ? "complete" : "simplified")
+              }
+              className={cn(
+                "w-10 h-6 rounded-full transition-colors duration-200 relative shrink-0 self-start sm:self-auto cursor-pointer",
+                (form.ui_status_mode ?? "complete") === "simplified" ? "bg-cyan" : "bg-border-subtle",
+              )}
+            >
+              <div
+                className={cn(
+                  "w-4 h-4 rounded-full bg-white shadow-sm absolute top-1 transition-all duration-200",
+                  (form.ui_status_mode ?? "complete") === "simplified" ? "left-5" : "left-1",
+                )}
+              />
+            </button>
           </div>
         </div>
       </div>

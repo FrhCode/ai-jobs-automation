@@ -138,7 +138,12 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.11** (Current)
+**1.1.12** (Current)
+
+- **Simplified Status Mode** — New settings toggle to switch between Complete (6-status dropdown) and Simplified (Applied / Not Interested buttons) on Job Detail and LinkedIn Post Detail pages
+- **Larger Action Buttons** — Open Link and Not Interested buttons in the jobs list are now easier to click
+
+**1.1.11**
 
 - **Download as TXT** — Cover Letter and Email can now be downloaded as `.txt` files on both Job Detail and LinkedIn Post Detail pages
 
