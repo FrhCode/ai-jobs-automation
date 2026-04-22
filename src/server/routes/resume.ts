@@ -2,7 +2,7 @@ import Elysia from 'elysia';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { resume, jobs, queue } from '../db/schema';
+import { resume, jobs, queue, settings } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
 import { parseResumeBuffer } from '../lib/resumeParser';
 import { processQueue } from '../lib/jobQueue';
@@ -41,11 +41,13 @@ export const resumeRoutes = new Elysia({ prefix: '/api/resume' })
       return { message: 'Only PDF files are allowed' };
     }
 
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+    const maxFileSizeRow = await db.select().from(settings).where(eq(settings.key, 'max_file_size_mb')).limit(1);
+    const maxFileSizeMb = maxFileSizeRow[0] ? parseInt(maxFileSizeRow[0].value, 10) : 10;
+    const MAX_FILE_SIZE = (Number.isNaN(maxFileSizeMb) || maxFileSizeMb <= 0 ? 10 : maxFileSizeMb) * 1024 * 1024;
     const buffer = Buffer.from(await file.arrayBuffer());
     if (buffer.length > MAX_FILE_SIZE) {
       set.status = 413;
-      return { message: 'File too large. Max 10MB.' };
+      return { message: `File too large. Max ${maxFileSizeMb}MB.` };
     }
 
     let extractedText: string;

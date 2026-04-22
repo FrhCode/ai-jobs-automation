@@ -201,6 +201,21 @@ export function SettingsForm({
             />
           </Field>
 
+          <Field>
+            <FieldLabel>Max File Size (MB)</FieldLabel>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={form.max_file_size_mb ?? "10"}
+              onChange={(e) => update("max_file_size_mb", e.target.value)}
+              className="font-mono"
+            />
+            <FieldDescription>
+              Maximum file size allowed for resume PDF and LinkedIn HTML uploads
+            </FieldDescription>
+          </Field>
+
           <div className="pt-2 border-t border-border-subtle">
             <button
               type="button"

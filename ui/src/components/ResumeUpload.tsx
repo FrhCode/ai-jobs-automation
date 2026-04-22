@@ -11,6 +11,7 @@ interface ResumeUploadProps {
   readonly onUpload: (file: File) => void;
   readonly onDelete: () => void;
   readonly isUploading: boolean;
+  readonly maxFileSizeMb?: number;
 }
 
 export function ResumeUpload({
@@ -18,6 +19,7 @@ export function ResumeUpload({
   onUpload,
   onDelete,
   isUploading,
+  maxFileSizeMb = 10,
 }: ResumeUploadProps) {
   const onDrop = (acceptedFiles: File[]) => {
     if (acceptedFiles[0]) onUpload(acceptedFiles[0]);
@@ -55,7 +57,7 @@ export function ResumeUpload({
             : "Drag & drop your resume PDF, or click to select"}
         </p>
         <p className="text-xs text-text-muted mt-1.5">
-          Only PDF files are supported
+          Only PDF files are supported · Max {maxFileSizeMb} MB
         </p>
         {isUploading && (
           <div className="flex items-center justify-center gap-2 mt-3">

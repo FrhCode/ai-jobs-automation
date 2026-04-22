@@ -138,7 +138,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.12** (Current)
+**1.1.13** (Current)
+
+- **Configurable Max File Size** — File upload size limit can now be changed from Settings (default: 10 MB for resume PDF, 100 MB for LinkedIn HTML). Both use the same `max_file_size_mb` setting
+
+**1.1.12**
 
 - **Simplified Status Mode** — New settings toggle to switch between Complete (6-status dropdown) and Simplified (Applied / Not Interested buttons) on Job Detail and LinkedIn Post Detail pages
 - **Larger Action Buttons** — Open Link and Not Interested buttons in the jobs list are now easier to click

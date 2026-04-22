@@ -20,6 +20,7 @@ import {
   useRetryLinkedInBatch,
   useUpdateLinkedInPost,
 } from "@/hooks/useLinkedInFeed";
+import { useSettings } from "@/hooks/useSettings";
 import { extractEmails, extractUrls } from "@/lib/extractContact";
 import { cn } from "@/lib/utils";
 import {
@@ -103,6 +104,8 @@ export function LinkedInFeedPage() {
   const del = useDeleteLinkedInPost();
   const retry = useRetryLinkedInBatch();
   const update = useUpdateLinkedInPost();
+  const { data: settings } = useSettings();
+  const maxFileSizeMb = settings?.max_file_size_mb ? parseInt(settings.max_file_size_mb, 10) : 100;
 
   // Chunked upload state
   const CHUNK_SIZE = 512 * 1024;
@@ -491,7 +494,7 @@ export function LinkedInFeedPage() {
             : "Drag & drop your saved LinkedIn HTML, or click to select"}
         </p>
         <p className="text-xs text-text-muted mt-1.5">
-          Only .html files are supported. Max 100 MB.
+          Only .html files are supported. Max {maxFileSizeMb} MB.
         </p>
         {uploadPhase === "uploading" && chunkStatuses.length > 0 && (
           <div className="mt-4 space-y-2">

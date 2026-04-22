@@ -26,11 +26,14 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
   .post('/linkedin-feed/upload/chunk', async ({ body, set }) => {
     const { uploadId, chunkIndex, totalChunks } = body;
     const CHUNK_SIZE_LIMIT = 512 * 1024; // 512 KB
-    const MAX_CHUNKS = 200; // 100 MB total
+    const maxFileSizeRow = await db.select().from(settings).where(eq(settings.key, 'max_file_size_mb')).limit(1);
+    const maxFileSizeMb = maxFileSizeRow[0] ? parseInt(maxFileSizeRow[0].value, 10) : 100;
+    const maxTotalSizeMb = Number.isNaN(maxFileSizeMb) || maxFileSizeMb <= 0 ? 100 : maxFileSizeMb;
+    const MAX_CHUNKS = Math.ceil((maxTotalSizeMb * 1024 * 1024) / CHUNK_SIZE_LIMIT);
 
     if (totalChunks > MAX_CHUNKS) {
       set.status = 400;
-      return { message: `File too large. Maximum 100 MB allowed.` };
+      return { message: `File too large. Maximum ${maxTotalSizeMb} MB allowed.` };
     }
 
     const chunksDir = join(process.env.UPLOADS_DIR || './uploads', 'chunks', uploadId);
@@ -65,7 +68,10 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
 
   .post('/linkedin-feed/upload/finalize', async ({ body, set }) => {
     const { uploadId, filename } = body;
-    const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100 MB
+    const maxFileSizeRow = await db.select().from(settings).where(eq(settings.key, 'max_file_size_mb')).limit(1);
+    const maxFileSizeMb = maxFileSizeRow[0] ? parseInt(maxFileSizeRow[0].value, 10) : 100;
+    const maxTotalSizeMb = Number.isNaN(maxFileSizeMb) || maxFileSizeMb <= 0 ? 100 : maxFileSizeMb;
+    const MAX_TOTAL_SIZE = maxTotalSizeMb * 1024 * 1024;
 
     const rawFilename = filename || 'linkedin.html';
     const isHtml = rawFilename.toLowerCase().endsWith('.html') || rawFilename.toLowerCase().endsWith('.htm');
