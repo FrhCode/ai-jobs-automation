@@ -201,9 +201,9 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
       id: "actions",
       header: "",
       cell: ({ row }: { row: Row<Job> }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
-            className="text-text-muted hover:text-rose transition-colors disabled:opacity-50 cursor-pointer"
+            className="p-2 rounded-lg text-text-muted hover:text-rose hover:bg-rose/10 transition-colors disabled:opacity-50 cursor-pointer"
             title="Mark as Not Interested"
             disabled={
               row.original.appStatus === "not_interested" || !onUpdateJob
@@ -213,16 +213,16 @@ export function JobsTable({ jobs, onDelete, onUpdateJob }: JobsTableProps) {
               onUpdateJob?.(row.original.id, { appStatus: "not_interested" });
             }}
           >
-            <Ban className="w-3.5 h-3.5" />
+            <Ban className="w-4 h-4" />
           </button>
           <a
             href={row.original.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-text-muted hover:text-cyan transition-colors cursor-pointer"
+            className="p-2 rounded-lg text-text-muted hover:text-cyan hover:bg-cyan/10 transition-colors cursor-pointer"
             onClick={(e) => e.stopPropagation()}
           >
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-4 h-4" />
           </a>
         </div>
       ),
