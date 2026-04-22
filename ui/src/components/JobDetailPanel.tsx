@@ -13,6 +13,7 @@ import {
   Check,
   Copy,
   DollarSign,
+  Download,
   ExternalLink,
   FileText,
   Loader2,
@@ -76,6 +77,29 @@ function CopyButton({ text }: { text: string }) {
         <Copy className="w-3.5 h-3.5" />
       )}
       {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
+function DownloadButton({ text, filename }: { text: string; filename: string }) {
+  const handleDownload = () => {
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <button
+      onClick={handleDownload}
+      className="flex items-center gap-1.5 text-xs text-text-muted hover:text-cyan transition-colors cursor-pointer"
+    >
+      <Download className="w-3.5 h-3.5" />
+      Download
     </button>
   );
 }
@@ -390,7 +414,15 @@ export function JobDetailPanel({
             <FileText className="w-3.5 h-3.5" />
             Cover Letter
           </h3>
-          {job.coverLetter && <CopyButton text={job.coverLetter} />}
+          {job.coverLetter && (
+            <div className="flex items-center gap-3">
+              <CopyButton text={job.coverLetter} />
+              <DownloadButton
+                text={job.coverLetter}
+                filename={`cover-letter-${(job.company ?? "unknown").replace(/\s+/g, "-").toLowerCase()}-${(job.title ?? "job").replace(/\s+/g, "-").toLowerCase()}.txt`}
+              />
+            </div>
+          )}
         </div>
 
         {job.coverLetter ? (

@@ -138,7 +138,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.10** (Current)
+**1.1.11** (Current)
+
+- **Download as TXT** — Cover Letter and Email can now be downloaded as `.txt` files on both Job Detail and LinkedIn Post Detail pages
+
+**1.1.10**
 
 - **Update Logic Last Email Sent**
 

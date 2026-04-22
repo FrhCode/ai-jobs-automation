@@ -31,6 +31,7 @@ import {
   Check,
   Clock,
   Copy,
+  Download,
   ExternalLink,
   FileText,
   Link as LinkIcon,
@@ -77,6 +78,29 @@ function CopyButton({ text }: { text: string }) {
         <Copy className="w-3.5 h-3.5" />
       )}
       {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
+function DownloadButton({ text, filename }: { text: string; filename: string }) {
+  const handleDownload = () => {
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <button
+      onClick={handleDownload}
+      className="flex items-center gap-1.5 text-xs text-text-muted hover:text-cyan transition-colors cursor-pointer"
+    >
+      <Download className="w-3.5 h-3.5" />
+      Download
     </button>
   );
 }
@@ -479,9 +503,15 @@ export function LinkedInPostDetailPage() {
                     </h3>
                   </div>
                   {emailSubject && (
-                    <CopyButton
-                      text={`Subject: ${emailSubject}\n\n${emailBody}`}
-                    />
+                    <div className="flex items-center gap-3">
+                      <CopyButton
+                        text={`Subject: ${emailSubject}\n\n${emailBody}`}
+                      />
+                      <DownloadButton
+                        text={`Subject: ${emailSubject}\n\n${emailBody}`}
+                        filename={`email-${post.authorName?.replace(/\s+/g, "-").toLowerCase() || "linkedin-post"}.txt`}
+                      />
+                    </div>
                   )}
                 </div>
 
@@ -682,7 +712,15 @@ export function LinkedInPostDetailPage() {
             <FileText className="w-3.5 h-3.5" />
             Cover Letter
           </h3>
-          {post.coverLetter && <CopyButton text={post.coverLetter} />}
+          {post.coverLetter && (
+            <div className="flex items-center gap-3">
+              <CopyButton text={post.coverLetter} />
+              <DownloadButton
+                text={post.coverLetter}
+                filename={`cover-letter-${post.authorName?.replace(/\s+/g, "-").toLowerCase() || "linkedin-post"}.txt`}
+              />
+            </div>
+          )}
         </div>
 
         {post.coverLetter ? (
