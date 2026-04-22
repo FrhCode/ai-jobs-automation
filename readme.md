@@ -138,9 +138,15 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.13** (Current)
+**1.1.14** (Current)
 
-- **Configurable Max File Size** — File upload size limit can now be changed from Settings (default: 10 MB for resume PDF, 100 MB for LinkedIn HTML). Both use the same `max_file_size_mb` setting
+- **LinkedIn Batches Latest First** — Batch history now shows the most recent upload at the top
+- **Chunk Cleanup Cron** — Old LinkedIn upload chunk directories are automatically deleted after 24 hours via an hourly cron job
+- **Separate File Size Limits** — Resume PDF and LinkedIn HTML uploads now have independent max file size settings
+
+**1.1.13**
+
+- **Configurable Max File Size** — File upload size limit can now be changed from Settings (default: 10 MB for resume PDF, 100 MB for LinkedIn HTML)
 
 **1.1.12**
 

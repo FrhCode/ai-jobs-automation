@@ -105,7 +105,7 @@ export function LinkedInFeedPage() {
   const retry = useRetryLinkedInBatch();
   const update = useUpdateLinkedInPost();
   const { data: settings } = useSettings();
-  const maxFileSizeMb = settings?.max_file_size_mb ? parseInt(settings.max_file_size_mb, 10) : 100;
+  const maxFileSizeMb = settings?.max_linkedin_file_size_mb ? parseInt(settings.max_linkedin_file_size_mb, 10) : 100;
 
   // Chunked upload state
   const CHUNK_SIZE = 512 * 1024;

@@ -8,7 +8,7 @@ export function ResumePage() {
   const upload = useUploadResume();
   const del = useDeleteResume();
   const { data: settings } = useSettings();
-  const maxFileSizeMb = settings?.max_file_size_mb ? parseInt(settings.max_file_size_mb, 10) : 10;
+  const maxFileSizeMb = settings?.max_resume_file_size_mb ? parseInt(settings.max_resume_file_size_mb, 10) : 10;
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64 gap-3 text-text-secondary">

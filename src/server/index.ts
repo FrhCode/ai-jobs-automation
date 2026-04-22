@@ -5,6 +5,7 @@ import { db } from './db';
 import { settings, queue } from './db/schema';
 import { app } from './app';
 import { reloadCronSchedule } from './lib/cronScheduler';
+import { startChunkCleanupCron } from './lib/chunkCleanup';
 
 async function seedPasswordHash() {
   await db.transaction(async (tx) => {
@@ -41,6 +42,9 @@ async function bootstrap() {
 
   console.log('[Bootstrap] Arming cron scheduler...');
   await reloadCronSchedule();
+
+  console.log('[Bootstrap] Starting chunk cleanup cron...');
+  startChunkCleanupCron();
 
   const PORT = parseInt(process.env.PORT || '3001', 10);
   app.listen(PORT, () => {

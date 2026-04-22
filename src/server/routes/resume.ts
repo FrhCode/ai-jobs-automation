@@ -41,7 +41,7 @@ export const resumeRoutes = new Elysia({ prefix: '/api/resume' })
       return { message: 'Only PDF files are allowed' };
     }
 
-    const maxFileSizeRow = await db.select().from(settings).where(eq(settings.key, 'max_file_size_mb')).limit(1);
+    const maxFileSizeRow = await db.select().from(settings).where(eq(settings.key, 'max_resume_file_size_mb')).limit(1);
     const maxFileSizeMb = maxFileSizeRow[0] ? parseInt(maxFileSizeRow[0].value, 10) : 10;
     const MAX_FILE_SIZE = (Number.isNaN(maxFileSizeMb) || maxFileSizeMb <= 0 ? 10 : maxFileSizeMb) * 1024 * 1024;
     const buffer = Buffer.from(await file.arrayBuffer());

@@ -202,17 +202,32 @@ export function SettingsForm({
           </Field>
 
           <Field>
-            <FieldLabel>Max File Size (MB)</FieldLabel>
+            <FieldLabel>Max Resume File Size (MB)</FieldLabel>
             <Input
               type="number"
               min={1}
-              max={100}
-              value={form.max_file_size_mb ?? "10"}
-              onChange={(e) => update("max_file_size_mb", e.target.value)}
+              max={50}
+              value={form.max_resume_file_size_mb ?? "10"}
+              onChange={(e) => update("max_resume_file_size_mb", e.target.value)}
               className="font-mono"
             />
             <FieldDescription>
-              Maximum file size allowed for resume PDF and LinkedIn HTML uploads
+              Maximum resume PDF file size allowed for upload
+            </FieldDescription>
+          </Field>
+
+          <Field>
+            <FieldLabel>Max LinkedIn File Size (MB)</FieldLabel>
+            <Input
+              type="number"
+              min={1}
+              max={500}
+              value={form.max_linkedin_file_size_mb ?? "100"}
+              onChange={(e) => update("max_linkedin_file_size_mb", e.target.value)}
+              className="font-mono"
+            />
+            <FieldDescription>
+              Maximum LinkedIn HTML file size allowed for upload
             </FieldDescription>
           </Field>
 
