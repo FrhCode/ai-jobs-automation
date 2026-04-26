@@ -1,6 +1,7 @@
 import { schedule, type ScheduledTask } from 'node-cron';
 import { readdir, stat, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { logger } from './logger';
 
 let activeTask: ScheduledTask | null = null;
 
@@ -28,23 +29,23 @@ export async function cleanupOldChunks(): Promise<{ deleted: number; errors: num
         if (age > MAX_AGE_MS) {
           await rm(entryPath, { recursive: true, force: true });
           deleted++;
-          console.log(`[ChunkCleanup] Deleted old chunk dir: ${entry} (${Math.round(age / 3600000)}h old)`);
+          logger.info(`[ChunkCleanup] Deleted old chunk dir: ${entry} (${Math.round(age / 3600000)}h old)`);
         }
       } catch (err) {
         errors++;
-        console.error(`[ChunkCleanup] Failed to process ${entry}:`, (err as Error).message);
+        logger.error(`[ChunkCleanup] Failed to process ${entry}:`, (err as Error).message);
       }
     }
   } catch (err) {
     // Directory may not exist yet — not an error
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
       errors++;
-      console.error('[ChunkCleanup] Failed to read chunks dir:', (err as Error).message);
+      logger.error('[ChunkCleanup] Failed to read chunks dir:', (err as Error).message);
     }
   }
 
   if (deleted > 0 || errors > 0) {
-    console.log(`[ChunkCleanup] Done. Deleted: ${deleted}, Errors: ${errors}`);
+    logger.info(`[ChunkCleanup] Done. Deleted: ${deleted}, Errors: ${errors}`);
   }
 
   return { deleted, errors };
@@ -58,12 +59,12 @@ export function startChunkCleanupCron(): void {
 
   // Run immediately on startup, then every hour
   cleanupOldChunks().catch((err) => {
-    console.error('[ChunkCleanup] Initial cleanup failed:', err);
+    logger.error('[ChunkCleanup] Initial cleanup failed:', err);
   });
 
   activeTask = schedule('0 * * * *', async () => {
     await cleanupOldChunks();
   });
 
-  console.log('[ChunkCleanup] Scheduled to run every hour');
+  logger.info('[ChunkCleanup] Scheduled to run every hour');
 }

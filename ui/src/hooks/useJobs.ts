@@ -8,6 +8,7 @@ import {
   enqueueJobs,
   reanalyzeJob,
   generateCoverLetter,
+  generateTailoredResume,
   getJobQuestions,
   createJobQuestion,
   updateJobQuestion,
@@ -70,6 +71,17 @@ export function useGenerateCoverLetter() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { id: number }) => generateCoverLetter(id),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: qk.jobs() });
+      qc.invalidateQueries({ queryKey: qk.job(variables.id) });
+    },
+  });
+}
+
+export function useGenerateTailoredResume() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: number }) => generateTailoredResume(id),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: qk.jobs() });
       qc.invalidateQueries({ queryKey: qk.job(variables.id) });

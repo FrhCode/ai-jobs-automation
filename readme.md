@@ -138,7 +138,18 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.1.14** (Current)
+**1.2.0** (Current)
+
+- **AI Resume Coach** — Interactive chat panel that critiques resume sections, asks targeted questions, and suggests concrete improvements with streaming responses
+- **Resume Weak Spot Analysis** — AI automatically analyzes resume on load and highlights 3-7 weak spots inline; clicking any spot opens the coach for that issue
+- **Tailored Resume Generation** — Generate job-specific tailored resumes for both regular jobs and LinkedIn posts, with PDF export
+- **Keyword Cloud** — Auto-detects skills in resume and suggests commonly missing ATS keywords
+- **Section Navigator** — Quick navigation through resume sections with one-click coach queries
+- **Diff Review Modal** — Side-by-side diff view for reviewing AI-suggested resume changes before applying
+- **Resume Inline Editing** — Edit resume text directly in the UI with save/cancel controls
+- **Structured Logging** — Replaced console logging with Winston-based structured logger across the backend
+
+**1.1.14**
 
 - **LinkedIn Batches Latest First** — Batch history now shows the most recent upload at the top
 - **Chunk Cleanup Cron** — Old LinkedIn upload chunk directories are automatically deleted after 24 hours via an hourly cron job

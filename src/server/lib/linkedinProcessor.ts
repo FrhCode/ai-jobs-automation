@@ -4,6 +4,7 @@ import type { SelectLinkedInPost } from "../db/schema";
 import { linkedinPosts } from "../db/schema";
 import { analyzeLinkedInPost, classifyIsProgrammerJob } from "./aiAnalyzer";
 import type { ParsedPost } from "./linkedinParser";
+import { logger } from "./logger";
 
 const CONCURRENCY = 3;
 
@@ -27,7 +28,7 @@ async function runWithLimit<T>(
       try {
         results[i] = await tasks[i]();
       } catch (err) {
-        console.error(
+        logger.error(
           `[LinkedIn Batch] Worker error at index ${i}:`,
           (err as Error).message,
         );
@@ -130,14 +131,14 @@ export async function processLinkedInBatch(
   }
 
   if (tasks.length === 0) {
-    console.log(
+    logger.info(
       `[LinkedIn Batch] ${batchId} complete — all ${posts.length} posts reused from cache`,
     );
     return;
   }
 
   // Step 2: Run lightweight programmer-job filter in parallel
-  console.log(
+  logger.info(
     `[LinkedIn Batch] Running programmer filter for ${tasks.length} posts`,
   );
   const filterResults = await runWithLimit(
@@ -211,7 +212,7 @@ export async function processLinkedInBatch(
 
   // Step 4: Run full AI analysis only for programmer jobs
   if (fullAnalysisTasks.length > 0) {
-    console.log(
+    logger.info(
       `[LinkedIn Batch] Running full analysis for ${fullAnalysisTasks.length} programmer jobs`,
     );
     const aiResults = await runWithLimit(
@@ -269,7 +270,7 @@ export async function processLinkedInBatch(
     }
   }
 
-  console.log(
+  logger.info(
     `[LinkedIn Batch] ${batchId} complete — full analysis: ${analyzedCount}, reused: ${reusedCount}, skipped (non-programmer): ${skippedCount}, failed: ${failedCount}, total: ${posts.length}`,
   );
 }

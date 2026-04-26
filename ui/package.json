@@ -1,7 +1,7 @@
 {
   "name": "ui",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,13 +22,17 @@
     "react-dom": "^19.2.4",
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.72.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.14.1",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

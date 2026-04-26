@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { logger } from './logger';
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -117,7 +118,7 @@ export async function scrapeSearchPage(searchUrl: string): Promise<string[]> {
   try {
     ({ html, status } = await fetchHtml(searchUrl));
   } catch (err) {
-    console.log(`  [Scraper] Fetch error on search page: ${(err as Error).message}`);
+    logger.error(`  [Scraper] Fetch error on search page: ${(err as Error).message}`);
     return [];
   }
 
@@ -126,17 +127,17 @@ export async function scrapeSearchPage(searchUrl: string): Promise<string[]> {
     await mkdir(debugDir, { recursive: true });
     const filename = path.join(debugDir, `search_${Date.now()}.html`);
     await writeFile(filename, html, 'utf8');
-    console.log(`  [Scraper] Saved response HTML → ${filename} (HTTP ${status})`);
+    logger.info(`  [Scraper] Saved response HTML → ${filename} (HTTP ${status})`);
   }
 
   if (status === 401 || status === 403) {
-    console.log(`  [Scraper] Blocked on search page (HTTP ${status})`);
+    logger.warn(`  [Scraper] Blocked on search page (HTTP ${status})`);
     return [];
   }
 
   const site = detectSite(searchUrl);
   const urls = extractJobUrls(html, site);
-  console.log(`  [Scraper] Found ${urls.length} job postings in search results (${site})`);
+  logger.info(`  [Scraper] Found ${urls.length} job postings in search results (${site})`);
   return urls;
 }
 
@@ -169,7 +170,7 @@ export async function scrapeJob(url: string, notes = ''): Promise<ScrapeResult> 
   try {
     ({ html, status } = await fetchHtml(url));
   } catch (err) {
-    console.log(`  [Scraper] Fetch error: ${(err as Error).message}`);
+    logger.error(`  [Scraper] Fetch error: ${(err as Error).message}`);
     return { rawText: notes, scrapeStatus: 'failed', url };
   }
 
@@ -178,11 +179,11 @@ export async function scrapeJob(url: string, notes = ''): Promise<ScrapeResult> 
     await mkdir(debugDir, { recursive: true });
     const filename = path.join(debugDir, `job_${Date.now()}.html`);
     await writeFile(filename, html, 'utf8');
-    console.log(`  [Scraper] Saved response HTML → ${filename} (HTTP ${status})`);
+    logger.info(`  [Scraper] Saved response HTML → ${filename} (HTTP ${status})`);
   }
 
   if (status === 401 || status === 403 || (html.includes('/authwall') && html.length < 5000)) {
-    console.log(`  [Scraper] Login wall (HTTP ${status})`);
+    logger.warn(`  [Scraper] Login wall (HTTP ${status})`);
     return { rawText: notes, scrapeStatus: 'login_wall', url };
   }
 
@@ -193,11 +194,11 @@ export async function scrapeJob(url: string, notes = ''): Promise<ScrapeResult> 
   }
 
   if (text.length < 200) {
-    console.log(`  [Scraper] Very little content (${text.length} chars) — may be blocked`);
+    logger.warn(`  [Scraper] Very little content (${text.length} chars) — may be blocked`);
     return { rawText: notes || text, scrapeStatus: 'partial', url };
   }
 
   const trimmed = text.slice(0, 8000);
-  console.log(`  [Scraper] Extracted ${trimmed.length} chars`);
+  logger.info(`  [Scraper] Extracted ${trimmed.length} chars`);
   return { rawText: trimmed, scrapeStatus: 'success', url };
 }

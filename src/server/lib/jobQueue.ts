@@ -4,6 +4,7 @@ import { jobs, queue, resume, settings } from '../db/schema';
 import { scrapeJob } from './scraper';
 import { analyzeJob } from './aiAnalyzer';
 import type { AnalyzeResult } from './aiAnalyzer';
+import { logger } from './logger';
 
 let isProcessing = false;
 
@@ -82,12 +83,12 @@ export async function processQueue(): Promise<void> {
     const { apiKey, model } = await getOpenRouterConfig();
 
     if (!resumeText) {
-      console.log('[Queue] No resume available, skipping processing');
+      logger.warn('[Queue] No resume available, skipping processing');
       return;
     }
 
     if (!apiKey) {
-      console.log('[Queue] No OpenRouter API key configured, skipping processing');
+      logger.warn('[Queue] No OpenRouter API key configured, skipping processing');
       return;
     }
 

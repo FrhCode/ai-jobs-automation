@@ -1,5 +1,6 @@
 import path from 'node:path';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import { logger } from './logger';
 
 export async function parseResume(filePath: string): Promise<string> {
   const absPath = path.resolve(filePath);
@@ -17,7 +18,7 @@ export async function parseResume(filePath: string): Promise<string> {
     .replace(/[ \t]+/g, ' ')
     .trim();
 
-  console.log(`[Resume] Parsed ${text.length} characters from ${path.basename(absPath)}`);
+  logger.info(`[Resume] Parsed ${text.length} characters from ${path.basename(absPath)}`);
   return text;
 }
 
@@ -29,6 +30,6 @@ export async function parseResumeBuffer(buffer: Buffer, filename: string): Promi
     .replace(/[ \t]+/g, ' ')
     .trim();
 
-  console.log(`[Resume] Parsed ${text.length} characters from ${filename}`);
+  logger.info(`[Resume] Parsed ${text.length} characters from ${filename}`);
   return text;
 }

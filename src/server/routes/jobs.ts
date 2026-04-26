@@ -13,7 +13,10 @@ import {
   updateQuestionSchema,
 } from '../../shared/schemas/jobs';
 import { processQueue } from '../lib/jobQueue';
-import { generateCoverLetter, generateAnswer } from '../lib/aiAnalyzer';
+import { generateCoverLetter, generateAnswer, generateTailoredResume } from '../lib/aiAnalyzer';
+import { renderResumePdf } from '../lib/resumePdfRenderer';
+import { logger } from '../lib/logger';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
   .use(authPlugin)
@@ -76,7 +79,7 @@ export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
       return { enqueued: newUrls.length, duplicates: body.urls.length - newUrls.length };
     });
 
-    processQueue().catch((err) => console.error('[Queue] Process error:', err));
+    processQueue().catch((err) => logger.error('[Queue] Process error:', err));
 
     return { enqueued, duplicates };
   }, {
@@ -115,7 +118,7 @@ export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
       await tx.insert(queue).values({ url: job.url, source: 'reanalyze' });
     });
 
-    processQueue().catch((err) => console.error('[Queue] Process error:', err));
+    processQueue().catch((err) => logger.error('[Queue] Process error:', err));
 
     return { queued: true };
   }, {
@@ -141,7 +144,7 @@ export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
       db.select().from(settings).where(eq(settings.key, 'openrouter_model')).limit(1),
     ]);
     const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
-    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
 
     if (!apiKey) {
       set.status = 400;
@@ -156,6 +159,76 @@ export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
       .returning();
 
     return updated;
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .post('/:id/tailored-resume', async ({ params, set }) => {
+    const [job] = await db.select().from(jobs).where(eq(jobs.id, params.id)).limit(1);
+    if (!job) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    const [resumeRow] = await db.select().from(resume).limit(1);
+    if (!resumeRow) {
+      set.status = 400;
+      return { message: 'No resume uploaded. Please upload a resume first.' };
+    }
+
+    const [apiKeyRow, modelRow] = await Promise.all([
+      db.select().from(settings).where(eq(settings.key, 'openrouter_api_key')).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_model')).limit(1),
+    ]);
+    const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
+
+    if (!apiKey) {
+      set.status = 400;
+      return { message: 'No OpenRouter API key configured.' };
+    }
+
+    const tailoredResume = await generateTailoredResume(job, resumeRow.extractedText, apiKey, model);
+    const pdfBuffer = await renderResumePdf(tailoredResume);
+
+    const cvsDir = 'uploads/cvs';
+    await mkdir(cvsDir, { recursive: true });
+    const pdfPath = `${cvsDir}/job-${params.id}.pdf`;
+    await writeFile(pdfPath, pdfBuffer);
+
+    const [updated] = await db.update(jobs)
+      .set({
+        tailoredResume: JSON.stringify(tailoredResume),
+        tailoredResumePdfPath: pdfPath,
+        updatedAt: new Date(),
+      })
+      .where(eq(jobs.id, params.id))
+      .returning();
+
+    return updated;
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .get('/:id/tailored-resume.pdf', async ({ params, set }) => {
+    const [job] = await db.select().from(jobs).where(eq(jobs.id, params.id)).limit(1);
+    if (!job || !job.tailoredResumePdfPath) {
+      set.status = 404;
+      return { message: 'No tailored resume found. Generate one first.' };
+    }
+
+    const file = Bun.file(job.tailoredResumePdfPath);
+    const exists = await file.exists();
+    if (!exists) {
+      set.status = 404;
+      return { message: 'PDF file not found.' };
+    }
+
+    set.headers['Content-Type'] = 'application/pdf';
+    set.headers['Content-Disposition'] = `attachment; filename="${job.company || 'Company'}-Resume.pdf"`;
+    return file;
   }, {
     requireAuth: true,
     params: z.object({ id: z.coerce.number().int().positive() }),

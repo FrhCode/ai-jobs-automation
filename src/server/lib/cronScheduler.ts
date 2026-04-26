@@ -4,11 +4,12 @@ import { db } from '../db';
 import { queue, settings, jobs } from '../db/schema';
 import { scrapeSearchPage } from './scraper';
 import { processQueue } from './jobQueue';
+import { logger } from './logger';
 
 let activeTask: ScheduledTask | null = null;
 
 export async function runCronTask(): Promise<{ searchUrls: number; found: number; newUrls: number }> {
-  console.log(`[Cron] Manual trigger at ${new Date().toISOString()}`);
+  logger.info(`[Cron] Manual trigger at ${new Date().toISOString()}`);
 
   const [urlsRow] = await db
     .select()
@@ -22,12 +23,12 @@ export async function runCronTask(): Promise<{ searchUrls: number; found: number
   try {
     searchUrls = JSON.parse(urlsJson);
   } catch {
-    console.log('[Cron] Invalid search URLs JSON');
+    logger.warn('[Cron] Invalid search URLs JSON');
     return { searchUrls: 0, found: 0, newUrls: 0 };
   }
 
   if (!Array.isArray(searchUrls) || searchUrls.length === 0) {
-    console.log('[Cron] No search URLs configured');
+    logger.warn('[Cron] No search URLs configured');
     return { searchUrls: 0, found: 0, newUrls: 0 };
   }
 
@@ -37,12 +38,12 @@ export async function runCronTask(): Promise<{ searchUrls: number; found: number
       const jobUrls = await scrapeSearchPage(searchUrl);
       allUrls.push(...jobUrls);
     } catch (err) {
-      console.log(`[Cron] Failed to scrape search page ${searchUrl}: ${(err as Error).message}`);
+      logger.error(`[Cron] Failed to scrape search page ${searchUrl}: ${(err as Error).message}`);
     }
   }
 
   if (allUrls.length === 0) {
-    console.log('[Cron] No job URLs found');
+    logger.info('[Cron] No job URLs found');
     return { searchUrls: searchUrls.length, found: 0, newUrls: 0 };
   }
 
@@ -62,14 +63,14 @@ export async function runCronTask(): Promise<{ searchUrls: number; found: number
   });
 
   if (newUrls.length === 0) {
-    console.log('[Cron] All URLs already exist in jobs table');
+    logger.info('[Cron] All URLs already exist in jobs table');
     return { searchUrls: searchUrls.length, found: allUrls.length, newUrls: 0 };
   }
 
-  console.log(`[Cron] Enqueued ${newUrls.length} new URLs`);
+  logger.info(`[Cron] Enqueued ${newUrls.length} new URLs`);
 
   processQueue().catch((err) => {
-    console.error('[Cron] Queue processing error:', err);
+    logger.error('[Cron] Queue processing error:', err);
   });
 
   return { searchUrls: searchUrls.length, found: allUrls.length, newUrls: newUrls.length };
@@ -92,12 +93,12 @@ export async function reloadCronSchedule(): Promise<void> {
   const urlsJson = urlsRow[0]?.value || '[]';
 
   if (!enabled) {
-    console.log('[Cron] Scheduler disabled');
+    logger.info('[Cron] Scheduler disabled');
     return;
   }
 
   if (!scheduleExpr || !validate(scheduleExpr)) {
-    console.log(`[Cron] Invalid or missing schedule expression: ${scheduleExpr}`);
+    logger.warn(`[Cron] Invalid or missing schedule expression: ${scheduleExpr}`);
     return;
   }
 
@@ -105,19 +106,19 @@ export async function reloadCronSchedule(): Promise<void> {
   try {
     searchUrls = JSON.parse(urlsJson);
   } catch {
-    console.log('[Cron] Invalid search URLs JSON');
+    logger.warn('[Cron] Invalid search URLs JSON');
     return;
   }
 
   if (!Array.isArray(searchUrls) || searchUrls.length === 0) {
-    console.log('[Cron] No search URLs configured');
+    logger.warn('[Cron] No search URLs configured');
     return;
   }
 
   activeTask = schedule(scheduleExpr, async () => {
-    console.log(`[Cron] Firing at ${new Date().toISOString()}`);
+    logger.info(`[Cron] Firing at ${new Date().toISOString()}`);
     await runCronTask();
   });
 
-  console.log(`[Cron] Scheduler armed with expression: ${scheduleExpr}`);
+    logger.info(`[Cron] Scheduler armed with expression: ${scheduleExpr}`);
 }

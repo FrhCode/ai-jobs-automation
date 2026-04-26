@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import OpenAI from "openai";
+import { logger } from "./logger";
 
 const SENTINEL = {
   title: "Unknown",
@@ -68,7 +69,7 @@ ${snippet}`;
       company: parsed.company || "",
     };
   } catch (err) {
-    console.log(
+    logger.error(
       `  [Filter] Error: ${(err as Error).message} — proceeding with full analysis`,
     );
     return { isTech: true, title: "", company: "" };
@@ -118,7 +119,7 @@ ${snippet}`;
       company: parsed.company || "",
     };
   } catch (err) {
-    console.log(
+    logger.error(
       `  [Filter] Programmer check error: ${(err as Error).message} — proceeding with full analysis`,
     );
     return { isProgrammerJob: true, title: "", company: "" };
@@ -245,7 +246,7 @@ export async function generateCoverLetter(
     ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
-    console.log(`  [AI] Cover letter error: ${(err as Error).message}`);
+    logger.error(`  [AI] Cover letter error: ${(err as Error).message}`);
     throw err;
   }
 
@@ -340,7 +341,7 @@ export async function generateApplicationEmail(
     ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
-    console.log(`  [AI] Email generation error: ${(err as Error).message}`);
+    logger.error(`  [AI] Email generation error: ${(err as Error).message}`);
     throw err;
   }
 
@@ -464,7 +465,7 @@ export async function generateAnswer(
     ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
-    console.log(`  [AI] Answer error: ${(err as Error).message}`);
+    logger.error(`  [AI] Answer error: ${(err as Error).message}`);
     throw err;
   }
 
@@ -541,7 +542,7 @@ export async function analyzeLinkedInPost(
     await mkdir(debugDir, { recursive: true });
     const promptFile = path.join(debugDir, `linkedin_prompt_${Date.now()}.txt`);
     await Bun.write(promptFile, prompt);
-    console.log(
+    logger.debug(
       `  [AI] LinkedIn prompt dumped → ${promptFile} (${prompt.length} chars)`,
     );
   }
@@ -564,7 +565,7 @@ export async function analyzeLinkedInPost(
     ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
-    console.log(`  [AI] LinkedIn API error: ${(err as Error).message}`);
+    logger.error(`  [AI] LinkedIn API error: ${(err as Error).message}`);
     return { isJob: false, ...SENTINEL };
   }
 
@@ -577,11 +578,11 @@ export async function analyzeLinkedInPost(
       try {
         parsed = JSON.parse(match[0]);
       } catch {
-        console.log(`  [AI] Could not parse LinkedIn response`);
+        logger.error(`  [AI] Could not parse LinkedIn response`);
         return { isJob: false, ...SENTINEL };
       }
     } else {
-      console.log(`  [AI] No JSON found in LinkedIn response`);
+      logger.warn(`  [AI] No JSON found in LinkedIn response`);
       return { isJob: false, ...SENTINEL };
     }
   }
@@ -621,7 +622,7 @@ export async function analyzeJob(
 
   const filter = await classifyIsTech(rawText, scrapeStatus, model, client);
   if (!filter.isTech) {
-    console.log(
+    logger.info(
       `  [Filter] Non-tech job — skipped (${filter.title || "unknown title"})`,
     );
     return {
@@ -647,7 +648,7 @@ export async function analyzeJob(
     await mkdir(debugDir, { recursive: true });
     const promptFile = path.join(debugDir, `prompt_${Date.now()}.txt`);
     await Bun.write(promptFile, prompt);
-    console.log(
+    logger.debug(
       `  [AI] Prompt dumped → ${promptFile} (${prompt.length} chars)`,
     );
   }
@@ -670,7 +671,7 @@ export async function analyzeJob(
     ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
-    console.log(`  [AI] API error: ${(err as Error).message}`);
+    logger.error(`  [AI] API error: ${(err as Error).message}`);
     return { ...SENTINEL, url, scrapeStatus: scrapeResult.scrapeStatus };
   }
 
@@ -683,11 +684,11 @@ export async function analyzeJob(
       try {
         parsed = JSON.parse(match[0]);
       } catch {
-        console.log(`  [AI] Could not parse response for ${url}`);
+        logger.error(`  [AI] Could not parse response for ${url}`);
         return { ...SENTINEL, url, scrapeStatus: scrapeResult.scrapeStatus };
       }
     } else {
-      console.log(`  [AI] No JSON found in response for ${url}`);
+      logger.warn(`  [AI] No JSON found in response for ${url}`);
       return { ...SENTINEL, url, scrapeStatus: scrapeResult.scrapeStatus };
     }
   }
@@ -712,4 +713,168 @@ export async function analyzeJob(
       (parsed.recommendation as string) || SENTINEL.recommendation,
     scrapeStatus,
   };
+}
+
+
+export interface TailoredResume {
+  fullName: string;
+  email: string;
+  phone: string;
+  location: string;
+  linkedin?: string;
+  summary: string;
+  experience: {
+    title: string;
+    company: string;
+    duration: string;
+    bullets: string[];
+  }[];
+  skills: string[];
+  education: {
+    degree: string;
+    institution: string;
+    year: string;
+  }[];
+}
+
+function createTailoredResumePrompt(
+  job: {
+    title: string | null;
+    company: string | null;
+    location: string | null;
+    descriptionSummary: string | null;
+    matchedSkills: string[] | null;
+    missingSkills: string[] | null;
+  },
+  resumeText: string,
+): string {
+  return `You are an expert resume writer. Tailor the candidate's base resume to match the target job posting. Do NOT invent or inflate experience — only reword, reorder, and emphasize what is actually in the base resume.
+
+TARGET JOB:
+- Title: ${job.title || "Unknown"}
+- Company: ${job.company || "Unknown"}
+- Location: ${job.location || "Not specified"}
+- Description: ${job.descriptionSummary || "Not available"}
+- Key skills mentioned: ${(job.matchedSkills || []).join(", ") || "N/A"}
+- Skills not in resume: ${(job.missingSkills || []).join(", ") || "N/A"}
+
+BASE RESUME:
+---
+${resumeText}
+---
+
+TASK:
+1. Read the base resume carefully.
+2. Identify which experiences, skills, and achievements are most relevant to the target job.
+3. Rewrite the resume to emphasize those relevant areas — reorder bullet points, use keywords from the job description, and highlight matching technologies.
+4. For missing skills, do NOT claim experience. Either omit them or frame them as "Familiar with" if the resume mentions any related exposure.
+5. Keep the same factual content — no invented companies, titles, dates, or metrics.
+6. Extract the candidate's contact info (name, email, phone) from the base resume.
+
+OUTPUT FORMAT — Return ONLY valid JSON, no markdown, no explanation:
+{
+  "fullName": "Candidate Name",
+  "email": "email@example.com",
+  "phone": "+1234567890",
+  "location": "City, Country",
+  "linkedin": "linkedin.com/in/name",
+  "summary": "2-3 sentence professional summary tailored to the job...",
+  "experience": [
+    {
+      "title": "Job Title",
+      "company": "Company Name",
+      "duration": "Jan 2020 – Present",
+      "bullets": [
+        "Achievement bullet with metric, tailored to match job keywords...",
+        "Another relevant bullet..."
+      ]
+    }
+  ],
+  "skills": ["Skill 1", "Skill 2", "Skill 3"],
+  "education": [
+    {
+      "degree": "B.S. Computer Science",
+      "institution": "University Name",
+      "year": "2019"
+    }
+  ]
+}`;
+}
+
+export async function generateTailoredResume(
+  job: {
+    title: string | null;
+    company: string | null;
+    location: string | null;
+    descriptionSummary: string | null;
+    matchedSkills: string[] | null;
+    missingSkills: string[] | null;
+  },
+  resumeText: string,
+  apiKey: string,
+  model: string,
+): Promise<TailoredResume> {
+  const client = createClient(apiKey);
+  const prompt = createTailoredResumePrompt(job, resumeText);
+
+  let responseText = "";
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Tailored resume generation timed out after 120s")),
+        120000,
+      ),
+    );
+    const completion = await Promise.race([
+      client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.5,
+        max_tokens: 4096,
+      }),
+      timeout,
+    ]);
+    responseText = completion.choices[0]?.message?.content || "";
+  } catch (err) {
+    logger.error(`  [AI] Tailored resume error: ${(err as Error).message}`);
+    throw err;
+  }
+
+  const cleaned = responseText
+    .replace(/^```(?:json)?\n?/i, "")
+    .replace(/\n?```$/i, "")
+    .trim();
+
+  try {
+    const parsed = JSON.parse(cleaned);
+    return {
+      fullName: String(parsed.fullName || ""),
+      email: String(parsed.email || ""),
+      phone: String(parsed.phone || ""),
+      location: String(parsed.location || ""),
+      linkedin: String(parsed.linkedin || ""),
+      summary: String(parsed.summary || ""),
+      experience: Array.isArray(parsed.experience)
+        ? parsed.experience.map((exp: unknown) => ({
+            title: String((exp as Record<string, unknown>).title || ""),
+            company: String((exp as Record<string, unknown>).company || ""),
+            duration: String((exp as Record<string, unknown>).duration || ""),
+            bullets: Array.isArray((exp as Record<string, unknown>).bullets)
+              ? (exp as Record<string, unknown>).bullets.map((b: unknown) => String(b))
+              : [],
+          }))
+        : [],
+      skills: Array.isArray(parsed.skills) ? parsed.skills.map((s: unknown) => String(s)) : [],
+      education: Array.isArray(parsed.education)
+        ? parsed.education.map((edu: unknown) => ({
+            degree: String((edu as Record<string, unknown>).degree || ""),
+            institution: String((edu as Record<string, unknown>).institution || ""),
+            year: String((edu as Record<string, unknown>).year || ""),
+          }))
+        : [],
+    };
+  } catch (err) {
+    logger.error(`  [AI] Failed to parse tailored resume JSON: ${(err as Error).message}`);
+    throw new Error("AI returned invalid resume format");
+  }
 }

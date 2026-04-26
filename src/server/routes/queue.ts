@@ -6,6 +6,7 @@ import { queue } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
 import { clearQueueSchema } from '../../shared/schemas/queue';
 import { processQueue, getIsProcessing } from '../lib/jobQueue';
+import { logger } from '../lib/logger';
 
 export const queueRoutes = new Elysia({ prefix: '/api/queue' })
   .use(authPlugin)
@@ -28,7 +29,7 @@ export const queueRoutes = new Elysia({ prefix: '/api/queue' })
       return { message: 'Not found' };
     }
 
-    processQueue().catch((err) => console.error('[Queue] Process error:', err));
+    processQueue().catch((err) => logger.error('[Queue] Process error:', err));
 
     return { ok: true };
   }, {
@@ -45,7 +46,7 @@ export const queueRoutes = new Elysia({ prefix: '/api/queue' })
   })
 
   .post('/process', async () => {
-    processQueue().catch((err) => console.error('[Queue] Process error:', err));
+    processQueue().catch((err) => logger.error('[Queue] Process error:', err));
     return { started: true };
   }, {
     requireAuth: true,

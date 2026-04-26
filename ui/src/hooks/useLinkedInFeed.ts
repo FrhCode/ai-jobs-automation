@@ -8,6 +8,7 @@ import {
   retryLinkedInBatch,
   updateLinkedInPost,
   generateLinkedInCoverLetter,
+  generateLinkedInTailoredResume,
   generateLinkedInEmail,
   getLinkedInPostQuestions,
   createLinkedInPostQuestion,
@@ -86,6 +87,16 @@ export function useGenerateLinkedInCoverLetter() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => generateLinkedInCoverLetter(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: qk.linkedinPost(id) });
+    },
+  });
+}
+
+export function useGenerateLinkedInTailoredResume() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => generateLinkedInTailoredResume(id),
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: qk.linkedinPost(id) });
     },

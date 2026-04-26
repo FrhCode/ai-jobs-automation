@@ -16,6 +16,8 @@ export interface Job {
   appNotes: string | null;
   appliedAt: string | null;
   coverLetter: string | null;
+  tailoredResume: string | null;
+  tailoredResumePdfPath: string | null;
   addedAt: string;
   processedAt: string | null;
   updatedAt: string;
@@ -89,6 +91,8 @@ export interface LinkedInPost {
   appStatus: string | null;
   appNotes: string | null;
   coverLetter: string | null;
+  tailoredResume: string | null;
+  tailoredResumePdfPath: string | null;
   emailSubject: string | null;
   emailBody: string | null;
   appliedAt: string | null;

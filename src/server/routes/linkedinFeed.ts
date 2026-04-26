@@ -7,9 +7,11 @@ import { authPlugin } from '../plugins/auth';
 import { parseLinkedInHtml } from '../lib/linkedinParser';
 import type { ParsedPost } from '../lib/linkedinParser';
 import { processLinkedInBatch } from '../lib/linkedinProcessor';
-import { generateCoverLetter, generateAnswer, generateApplicationEmail } from '../lib/aiAnalyzer';
+import { generateCoverLetter, generateAnswer, generateApplicationEmail, generateTailoredResume } from '../lib/aiAnalyzer';
+import { renderResumePdf } from '../lib/resumePdfRenderer';
 import { mkdir, writeFile, readFile, rm, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { logger } from '../lib/logger';
 
 export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
   .use(authPlugin)
@@ -141,7 +143,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
 
     const resumeText = resumeRow[0]?.extractedText || '';
     const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
-    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
 
     processLinkedInBatch(keywordMatchedPosts, existingMap, {
       batchId,
@@ -149,7 +151,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       apiKey,
       model,
     }).catch((err) => {
-      console.error(`[LinkedIn Batch] ${batchId} failed:`, err);
+      logger.error(`[LinkedIn Batch] ${batchId} failed:`, err);
     });
 
     return {
@@ -256,7 +258,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
 
     const resumeText = resumeRow[0]?.extractedText || '';
     const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
-    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
 
     if (!resumeText || !apiKey) {
       set.status = 400;
@@ -278,7 +280,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       apiKey,
       model,
     }).catch((err) => {
-      console.error(`[LinkedIn Batch] ${batchId} retry failed:`, err);
+      logger.error(`[LinkedIn Batch] ${batchId} retry failed:`, err);
     });
 
     return { retriedCount: failedPosts.length, batchId, message: `Retrying ${failedPosts.length} failed posts` };
@@ -433,7 +435,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
 
     const resumeText = resumeRow[0]?.extractedText || '';
     const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
-    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
 
     if (!resumeText || !apiKey) {
       set.status = 400;
@@ -466,6 +468,86 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
     params: z.object({ id: z.coerce.number().int().positive() }),
   })
 
+  .post('/linkedin-posts/:id/tailored-resume', async ({ params, set }) => {
+    const [post] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+    if (!post) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    const [resumeRow, apiKeyRow, modelRow] = await Promise.all([
+      db.select().from(resume).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_api_key')).limit(1),
+      db.select().from(settings).where(eq(settings.key, 'openrouter_model')).limit(1),
+    ]);
+
+    const resumeText = resumeRow[0]?.extractedText || '';
+    const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
+
+    if (!resumeText || !apiKey) {
+      set.status = 400;
+      return { message: 'Resume and API key required' };
+    }
+
+    const tailoredResume = await generateTailoredResume(
+      {
+        title: post.title,
+        company: post.company,
+        location: post.location,
+        descriptionSummary: post.postContent,
+        matchedSkills: post.matchedSkills,
+        missingSkills: post.missingSkills,
+      },
+      resumeText,
+      apiKey,
+      model,
+    );
+    const pdfBuffer = await renderResumePdf(tailoredResume);
+
+    const cvsDir = 'uploads/cvs';
+    await mkdir(cvsDir, { recursive: true });
+    const pdfPath = `${cvsDir}/linkedin-post-${params.id}.pdf`;
+    await writeFile(pdfPath, pdfBuffer);
+
+    const [updated] = await db
+      .update(linkedinPosts)
+      .set({
+        tailoredResume: JSON.stringify(tailoredResume),
+        tailoredResumePdfPath: pdfPath,
+        updatedAt: new Date(),
+      })
+      .where(eq(linkedinPosts.id, params.id))
+      .returning();
+
+    return { tailoredResume, post: updated };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .get('/linkedin-posts/:id/tailored-resume.pdf', async ({ params, set }) => {
+    const [post] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+    if (!post || !post.tailoredResumePdfPath) {
+      set.status = 404;
+      return { message: 'No tailored resume found. Generate one first.' };
+    }
+
+    const file = Bun.file(post.tailoredResumePdfPath);
+    const exists = await file.exists();
+    if (!exists) {
+      set.status = 404;
+      return { message: 'PDF file not found.' };
+    }
+
+    set.headers['Content-Type'] = 'application/pdf';
+    set.headers['Content-Disposition'] = `attachment; filename="${post.company || 'Company'}-Resume.pdf"`;
+    return file;
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
   .post('/linkedin-posts/:id/email', async ({ params, set }) => {
     const [post] = await db.select().from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
     if (!post) {
@@ -481,7 +563,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
 
     const resumeText = resumeRow[0]?.extractedText || '';
     const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
-    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
 
     if (!resumeText || !apiKey) {
       set.status = 400;
@@ -555,7 +637,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
 
     const resumeText = resumeRow[0]?.extractedText || '';
     const apiKey = apiKeyRow[0]?.value || process.env.OPENROUTER_API_KEY || '';
-    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';
+    const model = modelRow[0]?.value || process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
 
     if (!resumeText || !apiKey) {
       set.status = 400;

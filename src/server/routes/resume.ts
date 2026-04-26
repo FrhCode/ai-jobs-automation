@@ -1,4 +1,4 @@
-import Elysia from 'elysia';
+import Elysia, { t } from 'elysia';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
@@ -6,6 +6,7 @@ import { resume, jobs, queue, settings } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
 import { parseResumeBuffer } from '../lib/resumeParser';
 import { processQueue } from '../lib/jobQueue';
+import { logger } from '../lib/logger';
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || './uploads';
 
@@ -90,7 +91,7 @@ export const resumeRoutes = new Elysia({ prefix: '/api/resume' })
     });
 
     if (row) {
-      processQueue().catch((err) => console.error('[Queue] Process error:', err));
+      processQueue().catch((err) => logger.error('[Queue] Process error:', err));
     }
 
     // Delete old physical file after successful DB transaction
@@ -105,6 +106,28 @@ export const resumeRoutes = new Elysia({ prefix: '/api/resume' })
     };
   }, {
     requireAuth: true,
+  })
+
+  .patch('/', async ({ body, set }) => {
+    const existing = await db.select().from(resume).limit(1);
+    if (!existing[0]) {
+      set.status = 404;
+      return { message: 'No resume found' };
+    }
+    const [updated] = await db.update(resume)
+      .set({ extractedText: body.extractedText })
+      .where(eq(resume.id, existing[0].id))
+      .returning();
+    return {
+      filename: updated.filename,
+      extractedText: updated.extractedText,
+      uploadedAt: updated.uploadedAt.toISOString(),
+    };
+  }, {
+    requireAuth: true,
+    body: t.Object({
+      extractedText: t.String(),
+    }),
   })
 
   .delete('/', async () => {

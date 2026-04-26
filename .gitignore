@@ -14,6 +14,8 @@ dist/
 # Uploads (keep directory but not files)
 uploads/*
 !uploads/.gitkeep
+uploads/cvs/*
+!uploads/cvs/.gitkeep
 
 # Logs
 logs/

@@ -6,6 +6,7 @@ import { settings, queue } from './db/schema';
 import { app } from './app';
 import { reloadCronSchedule } from './lib/cronScheduler';
 import { startChunkCleanupCron } from './lib/chunkCleanup';
+import { logger } from './lib/logger';
 
 async function seedPasswordHash() {
   await db.transaction(async (tx) => {
@@ -13,7 +14,7 @@ async function seedPasswordHash() {
     if (!row[0] && process.env.APP_PASSWORD) {
       const hash = await Bun.password.hash(process.env.APP_PASSWORD);
       await tx.insert(settings).values({ key: 'app_password_hash', value: hash });
-      console.log('[Bootstrap] Seeded app_password_hash from APP_PASSWORD env');
+      logger.info('[Bootstrap] Seeded app_password_hash from APP_PASSWORD env');
     }
   });
 }
@@ -27,32 +28,32 @@ async function crashRecovery() {
           .set({ status: 'pending', startedAt: null })
           .where(eq(queue.id, item.id));
       }
-      console.log(`[Bootstrap] Reset ${running.length} running queue items to pending`);
+      logger.info(`[Bootstrap] Reset ${running.length} running queue items to pending`);
     }
   });
 }
 
 async function bootstrap() {
-  console.log('[Bootstrap] Running migrations...');
+  logger.info('[Bootstrap] Running migrations...');
   await migrate(db, { migrationsFolder: './drizzle/migrations' });
-  console.log('[Bootstrap] Migrations done');
+  logger.info('[Bootstrap] Migrations done');
 
   await seedPasswordHash();
   await crashRecovery();
 
-  console.log('[Bootstrap] Arming cron scheduler...');
+  logger.info('[Bootstrap] Arming cron scheduler...');
   await reloadCronSchedule();
 
-  console.log('[Bootstrap] Starting chunk cleanup cron...');
+  logger.info('[Bootstrap] Starting chunk cleanup cron...');
   startChunkCleanupCron();
 
   const PORT = parseInt(process.env.PORT || '3001', 10);
   app.listen(PORT, () => {
-    console.log(`[Server] Listening on http://localhost:${PORT}`);
+    logger.info(`[Server] Listening on http://localhost:${PORT}`);
   });
 }
 
 bootstrap().catch((err) => {
-  console.error('[FATAL]', err);
+  logger.error('[FATAL]', err);
   process.exit(1);
 });

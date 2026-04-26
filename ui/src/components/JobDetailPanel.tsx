@@ -17,6 +17,7 @@ import {
   DollarSign,
   Download,
   ExternalLink,
+  FileDown,
   FileText,
   Loader2,
   MapPin,
@@ -38,6 +39,9 @@ interface JobDetailPanelProps {
   readonly onReanalyze: () => void;
   readonly onGenerateCoverLetter?: () => void;
   readonly isGeneratingCoverLetter?: boolean;
+  readonly onGenerateTailoredResume?: () => void;
+  readonly isGeneratingTailoredResume?: boolean;
+  readonly onDownloadTailoredResumePdf?: () => void;
   readonly questions?: JobQuestion[];
   readonly questionsLoading?: boolean;
   readonly onCreateQuestion?: (question: string) => void;
@@ -217,6 +221,9 @@ export function JobDetailPanel({
   onReanalyze,
   onGenerateCoverLetter,
   isGeneratingCoverLetter,
+  onGenerateTailoredResume,
+  isGeneratingTailoredResume,
+  onDownloadTailoredResumePdf,
   questions = [],
   questionsLoading = false,
   onCreateQuestion,
@@ -470,6 +477,88 @@ export function JobDetailPanel({
                 <>
                   <Sparkles className="w-3.5 h-3.5" />
                   Generate Cover Letter
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Tailored Resume / CV */}
+      <div className="glass-card rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-mono uppercase tracking-widest text-text-muted flex items-center gap-2">
+            <FileDown className="w-3.5 h-3.5" />
+            Tailored CV
+          </h3>
+          {job.tailoredResumePdfPath && (
+            <button
+              onClick={onDownloadTailoredResumePdf}
+              className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              Download PDF
+            </button>
+          )}
+        </div>
+
+        {job.tailoredResume ? (
+          <div className="space-y-3">
+            <details className="group">
+              <summary className="flex items-center gap-2 text-xs text-text-muted cursor-pointer hover:text-text-secondary transition-colors">
+                <span className="group-open:rotate-90 transition-transform">▶</span>
+                Preview tailored resume content
+              </summary>
+              <Textarea
+                value={job.tailoredResume}
+                readOnly
+                rows={8}
+                className="text-sm leading-relaxed resize-y mt-2"
+              />
+            </details>
+            <button
+              onClick={onGenerateTailoredResume}
+              disabled={isGeneratingTailoredResume}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-subtle text-text-secondary text-sm hover:bg-surface-elevated disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+            >
+              {isGeneratingTailoredResume ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+                  Regenerating...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Regenerate CV
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+            <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-cyan" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-text-secondary">No tailored CV yet</p>
+              <p className="text-xs text-text-muted">
+                Generate a job-tailored resume PDF based on your base resume
+              </p>
+            </div>
+            <button
+              onClick={onGenerateTailoredResume}
+              disabled={isGeneratingTailoredResume}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+            >
+              {isGeneratingTailoredResume ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Generate CV
                 </>
               )}
             </button>

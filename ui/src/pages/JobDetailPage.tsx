@@ -5,6 +5,7 @@ import {
   useUpdateJob,
   useReanalyzeJob,
   useGenerateCoverLetter,
+  useGenerateTailoredResume,
   useJobQuestions,
   useCreateJobQuestion,
   useUpdateJobQuestion,
@@ -19,6 +20,7 @@ export function JobDetailPage() {
   const updateJob = useUpdateJob();
   const reanalyze = useReanalyzeJob();
   const generateCoverLetter = useGenerateCoverLetter();
+  const generateTailoredResume = useGenerateTailoredResume();
   const { data: questions, isLoading: questionsLoading } = useJobQuestions(jobId);
   const createQuestion = useCreateJobQuestion();
   const updateQuestion = useUpdateJobQuestion();
@@ -45,6 +47,11 @@ export function JobDetailPage() {
       onReanalyze={() => reanalyze.mutate({ id: jobId })}
       onGenerateCoverLetter={() => generateCoverLetter.mutate({ id: jobId })}
       isGeneratingCoverLetter={generateCoverLetter.isPending}
+      onGenerateTailoredResume={() => generateTailoredResume.mutate({ id: jobId })}
+      isGeneratingTailoredResume={generateTailoredResume.isPending}
+      onDownloadTailoredResumePdf={() => {
+        window.open(`${import.meta.env.VITE_API_URL}/api/jobs/${jobId}/tailored-resume.pdf`, '_blank');
+      }}
       questions={questions ?? []}
       questionsLoading={questionsLoading}
       onCreateQuestion={(question) => createQuestion.mutate({ id: jobId, question })}
