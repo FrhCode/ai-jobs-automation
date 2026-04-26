@@ -70,6 +70,7 @@ function diffInline(oldLine: string, newLine: string): { oldSegs: WordSegment[];
 }
 
 type SplitRow = {
+  type: 'row';
   key: string;
   left?: DiffLine;
   right?: DiffLine;
@@ -104,6 +105,7 @@ function buildSplitRows(lines: DiffLine[]): SplitRow[] {
         }
 
         rows.push({
+          type: 'row',
           left: leftLine,
           right: rightLine,
           key: `row-${leftLine?.id ?? 'e'}-${rightLine?.id ?? 'e'}`,
@@ -113,10 +115,10 @@ function buildSplitRows(lines: DiffLine[]): SplitRow[] {
       const start = i;
       while (i < lines.length && lines[i].type === 'added') i++;
       for (let k = start; k < i; k++) {
-        rows.push({ right: lines[k], key: `row-${lines[k].id}` });
+        rows.push({ type: 'row', right: lines[k], key: `row-${lines[k].id}` });
       }
     } else {
-      rows.push({ left: lines[i], right: lines[i], key: `row-${lines[i].id}` });
+      rows.push({ type: 'row', left: lines[i], right: lines[i], key: `row-${lines[i].id}` });
       i++;
     }
   }
@@ -246,37 +248,36 @@ export function DiffModal({ open, onOpenChange, currentText, proposedText, onAcc
                     </div>
                   );
                 }
-                const row = entry as SplitRow;
                 return (
-                  <div key={row.key} className="grid grid-cols-2 divide-x divide-border-subtle">
+                  <div key={entry.key} className="grid grid-cols-2 divide-x divide-border-subtle">
                     {/* Left side */}
                     <div className={cn(
                       'flex items-start gap-2 px-3 py-0.5 whitespace-pre-wrap break-words',
-                      row.left?.type === 'removed' && 'text-red-300',
-                      row.left?.type === 'unchanged' && 'text-text-secondary',
+                      entry.left?.type === 'removed' && 'text-red-300',
+                      entry.left?.type === 'unchanged' && 'text-text-secondary',
                     )}>
                       <span className={cn(
                         'shrink-0 w-3 select-none font-bold',
-                        row.left?.type === 'removed' && 'text-red-400',
+                        entry.left?.type === 'removed' && 'text-red-400',
                       )}>
-                        {row.left ? (row.left.type === 'removed' ? '−' : ' ') : ' '}
+                        {entry.left ? (entry.left.type === 'removed' ? '−' : ' ') : ' '}
                       </span>
-                      <SplitLineContent line={row.left} side="left" />
+                      <SplitLineContent line={entry.left} side="left" />
                     </div>
 
                     {/* Right side */}
                     <div className={cn(
                       'flex items-start gap-2 px-3 py-0.5 whitespace-pre-wrap break-words',
-                      row.right?.type === 'added' && 'text-green-400',
-                      row.right?.type === 'unchanged' && 'text-text-secondary',
+                      entry.right?.type === 'added' && 'text-green-400',
+                      entry.right?.type === 'unchanged' && 'text-text-secondary',
                     )}>
                       <span className={cn(
                         'shrink-0 w-3 select-none font-bold',
-                        row.right?.type === 'added' && 'text-green-500',
+                        entry.right?.type === 'added' && 'text-green-500',
                       )}>
-                        {row.right ? (row.right.type === 'added' ? '+' : ' ') : ' '}
+                        {entry.right ? (entry.right.type === 'added' ? '+' : ' ') : ' '}
                       </span>
-                      <SplitLineContent line={row.right} side="right" />
+                      <SplitLineContent line={entry.right} side="right" />
                     </div>
                   </div>
                 );
