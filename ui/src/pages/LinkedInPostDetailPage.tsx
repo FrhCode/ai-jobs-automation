@@ -12,6 +12,7 @@ import {
   useGenerateLinkedInTailoredResume,
   useLinkedInTailoredResumeStatus,
   useGenerateLinkedInEmail,
+  useLinkedInEmailStatus,
   useLinkedInPost,
   useLinkedInPostQuestions,
   useUpdateLinkedInPost,
@@ -254,6 +255,9 @@ export function LinkedInPostDetailPage() {
 
   // Email generation state
   const generateEmail = useGenerateLinkedInEmail();
+  const { data: emailStatusData } = useLinkedInEmailStatus(postId);
+  const emailStatus = emailStatusData?.status ?? post?.emailStatus ?? 'idle';
+
   const [emailSubject, setEmailSubject] = useState(post?.emailSubject ?? "");
   const [emailBody, setEmailBody] = useState(post?.emailBody ?? "");
 
@@ -262,17 +266,26 @@ export function LinkedInPostDetailPage() {
     : extractEmails(post?.postContent ?? "");
   const { data: recruiterContact } = useRecruiterContact(emails[0] ?? null);
 
-  // Sync email from post data when it loads (e.g. after refresh)
+  const [emailTo, setEmailTo] = useState(emails[0] ?? "");
+
+  // When polling detects generation finished, refresh the post to get subject/body
   useEffect(() => {
-    if (post && !generateEmail.isPending) {
-      if (post.emailSubject && emailSubject !== post.emailSubject) {
-        setEmailSubject(post.emailSubject);
-      }
-      if (post.emailBody && emailBody !== post.emailBody) {
-        setEmailBody(post.emailBody);
-      }
+    if (emailStatus === 'ready' || emailStatus === 'failed') {
+      qc.invalidateQueries({ queryKey: qk.linkedinPost(postId) });
+    }
+  }, [emailStatus]);
+
+  // Sync email fields from post data
+  useEffect(() => {
+    if (post) {
+      if (post.emailSubject && emailSubject !== post.emailSubject) setEmailSubject(post.emailSubject);
+      if (post.emailBody && emailBody !== post.emailBody) setEmailBody(post.emailBody);
     }
   }, [post?.emailSubject, post?.emailBody]);
+
+  useEffect(() => {
+    if (emails[0] && !emailTo) setEmailTo(emails[0]);
+  }, [emails[0]]);
 
   // Sync notes draft when post loads
   if (post && notesDraft !== (post.appNotes ?? "") && !updatePost.isPending) {
@@ -551,23 +564,9 @@ export function LinkedInPostDetailPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-text-muted">To:</span>
-                    <span className="text-text-primary font-mono">
-                      {emails[0]}
-                    </span>
-                  </div>
-
-                  {!emailSubject && !generateEmail.isPending && (
+                  {emailStatus !== 'generating' && !emailSubject && emailStatus !== 'failed' && (
                     <button
-                      onClick={() => {
-                        generateEmail.mutate(postId, {
-                          onSuccess: (data) => {
-                            setEmailSubject(data.subject);
-                            setEmailBody(data.body);
-                          },
-                        });
-                      }}
+                      onClick={() => { generateEmail.mutate(postId); }}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 transition-all cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -575,10 +574,26 @@ export function LinkedInPostDetailPage() {
                     </button>
                   )}
 
-                  {generateEmail.isPending && (
+                  {emailStatus === 'generating' && (
                     <div className="flex items-center gap-2 text-sm text-cyan">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       Generating email…
+                    </div>
+                  )}
+
+                  {emailStatus === 'failed' && (
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-rose/10 border border-rose/20 text-rose text-sm">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{emailStatusData?.error ?? 'Email generation failed.'}</span>
+                      </div>
+                      <button
+                        onClick={() => { generateEmail.mutate(postId); }}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-elevated border border-border-subtle text-text-primary text-sm font-medium hover:border-cyan transition-all cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Retry
+                      </button>
                     </div>
                   )}
 
@@ -607,6 +622,18 @@ export function LinkedInPostDetailPage() {
                         )}
                         <div>
                           <label className="text-xs text-text-muted mb-1 block">
+                            To
+                          </label>
+                          <input
+                            type="email"
+                            value={emailTo}
+                            onChange={(e) => setEmailTo(e.target.value)}
+                            placeholder="recipient@example.com"
+                            className="w-full text-sm bg-surface-elevated border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-cyan"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-text-muted mb-1 block">
                             Subject
                           </label>
                           <input
@@ -629,7 +656,7 @@ export function LinkedInPostDetailPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           <a
-                            href={`mailto:${emails[0]}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
+                            href={`mailto:${emailTo}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
                             className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 transition-all"
                             onClick={(e) => {
                               e.stopPropagation();

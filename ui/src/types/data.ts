@@ -103,6 +103,8 @@ export interface LinkedInPost {
   tailoredResumeError: string | null;
   emailSubject: string | null;
   emailBody: string | null;
+  emailStatus: string | null;
+  emailError: string | null;
   appliedAt: string | null;
   emailSentAt: string | null;
   reminderAt: string | null;

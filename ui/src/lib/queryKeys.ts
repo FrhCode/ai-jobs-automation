@@ -7,6 +7,7 @@ export const qk = {
   coverLetterStatus: (id: number) => ['jobs', id, 'cover-letter-status'] as const,
   analyzeResumeStatus: (jobId: string) => ['resume', 'analyze', jobId, 'status'] as const,
   linkedinTailoredResumeStatus: (id: number) => ['linkedin-post', id, 'tailored-resume-status'] as const,
+  linkedinEmailStatus: (id: number) => ['linkedin-post', id, 'email-status'] as const,
   queue: () => ['queue'] as const,
   resume: () => ['resume'] as const,
   settings: () => ['settings'] as const,

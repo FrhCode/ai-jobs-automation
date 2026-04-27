@@ -502,11 +502,17 @@ export async function downloadLinkedInTailoredResumePdf(id: number): Promise<Blo
 }
 
 export async function generateLinkedInEmail(id: number) {
-  return request<{ subject: string; body: string }>(
+  return request<{ status: string }>(
     `/api/linkedin-posts/${id}/email`,
     {
       method: "POST",
     },
+  );
+}
+
+export async function getLinkedInEmailStatus(id: number) {
+  return request<{ postId: number; status: string; error: string | null }>(
+    `/api/linkedin-posts/${id}/email/status`,
   );
 }
 

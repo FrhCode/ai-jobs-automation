@@ -112,6 +112,8 @@ export const linkedinPosts = pgTable('linkedin_posts', {
   tailoredResumeError: text('tailored_resume_error'),
   emailSubject: text('email_subject'),
   emailBody: text('email_body'),
+  emailStatus: text('email_status').default('idle'),
+  emailError: text('email_error'),
   appliedAt: timestamp('applied_at', { withTimezone: true }),
   emailSentAt: timestamp('email_sent_at', { withTimezone: true }),
   reminderAt: timestamp('reminder_at', { withTimezone: true }),

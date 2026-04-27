@@ -11,6 +11,7 @@ import {
   generateLinkedInTailoredResume,
   getLinkedInTailoredResumeStatus,
   generateLinkedInEmail,
+  getLinkedInEmailStatus,
   getLinkedInPostQuestions,
   createLinkedInPostQuestion,
   updateLinkedInPostQuestion,
@@ -119,8 +120,23 @@ export function useLinkedInTailoredResumeStatus(id: number) {
 }
 
 export function useGenerateLinkedInEmail() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => generateLinkedInEmail(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: qk.linkedinEmailStatus(id) });
+    },
+  });
+}
+
+export function useLinkedInEmailStatus(id: number) {
+  return useQuery({
+    queryKey: qk.linkedinEmailStatus(id),
+    queryFn: () => getLinkedInEmailStatus(id),
+    enabled: id > 0,
+    refetchInterval: (query) => {
+      return query.state.data?.status === 'generating' ? 3000 : false;
+    },
   });
 }
 

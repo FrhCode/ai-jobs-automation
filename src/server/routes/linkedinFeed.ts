@@ -620,34 +620,68 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       return { message: 'Resume and API key required' };
     }
 
-    // Fallback: extract email from post content if not stored
     const contactEmail = post.contactEmail || '';
     if (!contactEmail) {
       set.status = 400;
       return { message: 'No contact email found for this post' };
     }
 
-    const { subject, body } = await generateApplicationEmail(
-      {
-        title: post.title,
-        company: post.company,
-        location: post.location,
-        descriptionSummary: post.postContent,
-        matchedSkills: post.matchedSkills,
-        missingSkills: post.missingSkills,
-      },
-      resumeText,
-      contactEmail,
-      apiKey,
-      model
-    );
+    await db.update(linkedinPosts)
+      .set({ emailStatus: 'generating', emailError: null, updatedAt: new Date() })
+      .where(eq(linkedinPosts.id, params.id));
 
-    const [updated] = await db.update(linkedinPosts)
-      .set({ emailSubject: subject, emailBody: body, updatedAt: new Date() })
-      .where(eq(linkedinPosts.id, params.id))
-      .returning();
+    // Fire-and-forget background generation
+    (async () => {
+      try {
+        const { subject, body } = await generateApplicationEmail(
+          {
+            title: post.title,
+            company: post.company,
+            location: post.location,
+            descriptionSummary: post.postContent,
+            matchedSkills: post.matchedSkills,
+            missingSkills: post.missingSkills,
+          },
+          resumeText,
+          contactEmail,
+          apiKey,
+          model
+        );
+        await db.update(linkedinPosts)
+          .set({ emailSubject: subject, emailBody: body, emailStatus: 'ready', emailError: null, updatedAt: new Date() })
+          .where(eq(linkedinPosts.id, params.id));
+      } catch (err) {
+        logger.error(`  [AI] Email generation failed for post ${params.id}: ${(err as Error).message}`);
+        await db.update(linkedinPosts)
+          .set({ emailStatus: 'failed', emailError: (err as Error).message, updatedAt: new Date() })
+          .where(eq(linkedinPosts.id, params.id));
+      }
+    })();
 
-    return { subject, body, post: updated };
+    set.status = 202;
+    return { status: 'generating' };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .get('/linkedin-posts/:id/email/status', async ({ params, set }) => {
+    const [post] = await db.select({
+      id: linkedinPosts.id,
+      emailStatus: linkedinPosts.emailStatus,
+      emailError: linkedinPosts.emailError,
+    }).from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+
+    if (!post) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    return {
+      postId: post.id,
+      status: post.emailStatus || 'idle',
+      error: post.emailError,
+    };
   }, {
     requireAuth: true,
     params: z.object({ id: z.coerce.number().int().positive() }),
