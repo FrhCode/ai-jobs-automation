@@ -74,7 +74,7 @@ const styles: StyleDictionary = {
   },
 };
 
-export function renderResumePdf(resume: TailoredResume): Promise<Buffer> {
+export async function renderResumePdf(resume: TailoredResume): Promise<Buffer> {
   const contactParts: string[] = [];
   if (resume.email) contactParts.push(resume.email);
   if (resume.phone) contactParts.push(resume.phone);
@@ -141,7 +141,7 @@ export function renderResumePdf(resume: TailoredResume): Promise<Buffer> {
     pageMargins: [40, 40, 40, 40],
   };
 
-  const pdfDoc = printer.createPdfKitDocument(docDefinition);
+  const pdfDoc = await printer.createPdfKitDocument(docDefinition);
   const chunks: Buffer[] = [];
 
   return new Promise<Buffer>((resolve, reject) => {
