@@ -97,15 +97,27 @@ export async function reanalyzeJob(id: number) {
 }
 
 export async function generateCoverLetter(id: number) {
-  return request<Job>(`/api/jobs/${id}/cover-letter`, {
+  return request<{ status: string; message: string }>(`/api/jobs/${id}/cover-letter`, {
     method: "POST",
   });
 }
 
+export async function getCoverLetterStatus(id: number) {
+  return request<{ jobId: number; status: string; error: string | null }>(
+    `/api/jobs/${id}/cover-letter/status`,
+  );
+}
+
 export async function generateTailoredResume(id: number) {
-  return request<Job>(`/api/jobs/${id}/tailored-resume`, {
+  return request<{ status: string; message: string }>(`/api/jobs/${id}/tailored-resume`, {
     method: "POST",
   });
+}
+
+export async function getTailoredResumeStatus(id: number) {
+  return request<{ jobId: number; status: string; error: string | null; pdfPath: string | null }>(
+    `/api/jobs/${id}/tailored-resume/status`,
+  );
 }
 
 export async function downloadTailoredResumePdf(id: number): Promise<Blob> {
@@ -257,10 +269,14 @@ export interface WeakSpot {
   severity: "high" | "medium";
 }
 
-export async function analyzeResume(): Promise<{ weakSpots: WeakSpot[] }> {
-  return request<{ weakSpots: WeakSpot[] }>("/api/chat/resume/analyze", {
+export async function analyzeResume(): Promise<{ jobId: string; status: string }> {
+  return request<{ jobId: string; status: string }>("/api/chat/resume/analyze", {
     method: "POST",
   });
+}
+
+export async function getAnalyzeResumeStatus(jobId: string): Promise<{ jobId: string; status: string; weakSpots: WeakSpot[] | null; error: string | null }> {
+  return request(`/api/chat/resume/analyze/status/${jobId}`);
 }
 
 export async function updateResumeText(
@@ -459,11 +475,17 @@ export async function generateLinkedInCoverLetter(id: number) {
 }
 
 export async function generateLinkedInTailoredResume(id: number) {
-  return request<{ tailoredResume: Record<string, unknown>; post: LinkedInPost }>(
+  return request<{ status: string; message: string }>(
     `/api/linkedin-posts/${id}/tailored-resume`,
     {
       method: "POST",
     },
+  );
+}
+
+export async function getLinkedInTailoredResumeStatus(id: number) {
+  return request<{ postId: number; status: string; error: string | null; pdfPath: string | null }>(
+    `/api/linkedin-posts/${id}/tailored-resume/status`,
   );
 }
 

@@ -2,12 +2,15 @@ import { Badge } from "@/components/ui/badge";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/lib/queryKeys';
 import {
   useCreateLinkedInPostQuestion,
   useDeleteLinkedInPost,
   useDeleteLinkedInPostQuestion,
   useGenerateLinkedInCoverLetter,
   useGenerateLinkedInTailoredResume,
+  useLinkedInTailoredResumeStatus,
   useGenerateLinkedInEmail,
   useLinkedInPost,
   useLinkedInPostQuestions,
@@ -226,8 +229,19 @@ export function LinkedInPostDetailPage() {
   const statusMode = settings?.ui_status_mode ?? "complete";
   const generateCoverLetter = useGenerateLinkedInCoverLetter();
   const generateTailoredResume = useGenerateLinkedInTailoredResume();
+  const { data: statusData } = useLinkedInTailoredResumeStatus(postId);
   const { data: questionsData, isLoading: questionsLoading } =
     useLinkedInPostQuestions(postId);
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (statusData && statusData.status !== 'generating') {
+      qc.invalidateQueries({ queryKey: qk.linkedinPost(postId) });
+      qc.invalidateQueries({ queryKey: qk.linkedinPosts() });
+    }
+  }, [statusData, postId, qc]);
+
+  const isGeneratingTailoredResume = generateTailoredResume.isPending || post?.tailoredResumeStatus === 'generating';
   const createQuestion = useCreateLinkedInPostQuestion();
   const updateQuestion = useUpdateLinkedInPostQuestion();
   const deleteQuestion = useDeleteLinkedInPostQuestion();
@@ -803,7 +817,34 @@ export function LinkedInPostDetailPage() {
           )}
         </div>
 
-        {post.tailoredResume ? (
+        {post.tailoredResumeStatus === 'failed' && post.tailoredResumeError ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-rose/10 border border-rose/20 text-rose text-sm">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium">Generation failed</p>
+                <p className="text-xs opacity-80">{post.tailoredResumeError}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => generateTailoredResume.mutate(postId)}
+              disabled={isGeneratingTailoredResume}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-subtle text-text-secondary text-sm hover:bg-surface-elevated disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+            >
+              {isGeneratingTailoredResume ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Retry
+                </>
+              )}
+            </button>
+          </div>
+        ) : post.tailoredResume ? (
           <div className="space-y-3">
             <details className="group">
               <summary className="flex items-center gap-2 text-xs text-text-muted cursor-pointer hover:text-text-secondary transition-colors">
@@ -819,10 +860,10 @@ export function LinkedInPostDetailPage() {
             </details>
             <button
               onClick={() => generateTailoredResume.mutate(postId)}
-              disabled={generateTailoredResume.isPending}
+              disabled={isGeneratingTailoredResume}
               className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-subtle text-text-secondary text-sm hover:bg-surface-elevated disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
             >
-              {generateTailoredResume.isPending ? (
+              {isGeneratingTailoredResume ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
                   Regenerating...
@@ -848,10 +889,10 @@ export function LinkedInPostDetailPage() {
             </div>
             <button
               onClick={() => generateTailoredResume.mutate(postId)}
-              disabled={generateTailoredResume.isPending}
+              disabled={isGeneratingTailoredResume}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
             >
-              {generateTailoredResume.isPending ? (
+              {isGeneratingTailoredResume ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Generating...

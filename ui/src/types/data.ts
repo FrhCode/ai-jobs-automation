@@ -16,8 +16,12 @@ export interface Job {
   appNotes: string | null;
   appliedAt: string | null;
   coverLetter: string | null;
+  coverLetterStatus: string | null;
+  coverLetterError: string | null;
   tailoredResume: string | null;
   tailoredResumePdfPath: string | null;
+  tailoredResumeStatus: string | null;
+  tailoredResumeError: string | null;
   addedAt: string;
   processedAt: string | null;
   updatedAt: string;
@@ -47,6 +51,8 @@ export interface JobQuestion {
   jobId: number;
   question: string;
   answer: string | null;
+  answerStatus: string | null;
+  answerError: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -93,6 +99,8 @@ export interface LinkedInPost {
   coverLetter: string | null;
   tailoredResume: string | null;
   tailoredResumePdfPath: string | null;
+  tailoredResumeStatus: string | null;
+  tailoredResumeError: string | null;
   emailSubject: string | null;
   emailBody: string | null;
   appliedAt: string | null;

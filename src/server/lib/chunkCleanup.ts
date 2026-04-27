@@ -51,6 +51,14 @@ export async function cleanupOldChunks(): Promise<{ deleted: number; errors: num
   return { deleted, errors };
 }
 
+export function stopChunkCleanupCron(): void {
+  if (activeTask) {
+    activeTask.stop();
+    activeTask = null;
+    logger.info('[ChunkCleanup] Cron stopped');
+  }
+}
+
 export function startChunkCleanupCron(): void {
   if (activeTask) {
     activeTask.stop();

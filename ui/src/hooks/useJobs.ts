@@ -8,7 +8,9 @@ import {
   enqueueJobs,
   reanalyzeJob,
   generateCoverLetter,
+  getCoverLetterStatus,
   generateTailoredResume,
+  getTailoredResumeStatus,
   getJobQuestions,
   createJobQuestion,
   updateJobQuestion,
@@ -72,8 +74,20 @@ export function useGenerateCoverLetter() {
   return useMutation({
     mutationFn: ({ id }: { id: number }) => generateCoverLetter(id),
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: qk.jobs() });
-      qc.invalidateQueries({ queryKey: qk.job(variables.id) });
+      qc.invalidateQueries({ queryKey: qk.coverLetterStatus(variables.id) });
+    },
+  });
+}
+
+export function useCoverLetterStatus(id: number) {
+  return useQuery({
+    queryKey: qk.coverLetterStatus(id),
+    queryFn: () => getCoverLetterStatus(id),
+    enabled: id > 0,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.status === 'generating') return 3000;
+      return false;
     },
   });
 }
@@ -85,6 +99,20 @@ export function useGenerateTailoredResume() {
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: qk.jobs() });
       qc.invalidateQueries({ queryKey: qk.job(variables.id) });
+      qc.invalidateQueries({ queryKey: qk.tailoredResumeStatus(variables.id) });
+    },
+  });
+}
+
+export function useTailoredResumeStatus(id: number) {
+  return useQuery({
+    queryKey: qk.tailoredResumeStatus(id),
+    queryFn: () => getTailoredResumeStatus(id),
+    enabled: id > 0,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.status === 'generating') return 3000;
+      return false;
     },
   });
 }
@@ -94,6 +122,11 @@ export function useJobQuestions(jobId: number) {
     queryKey: qk.jobQuestions(jobId),
     queryFn: () => getJobQuestions(jobId),
     enabled: jobId > 0,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.some((q) => q.answerStatus === 'generating')) return 3000;
+      return false;
+    },
   });
 }
 

@@ -3,6 +3,24 @@ import path from "node:path";
 import OpenAI from "openai";
 import { logger } from "./logger";
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  let lastErr!: Error;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err as Error;
+      const msg = lastErr.message?.toLowerCase() ?? "";
+      const isRetryable = msg.includes("socket") || msg.includes("connection") || msg.includes("econnreset") || msg.includes("econnrefused");
+      if (!isRetryable || attempt === retries) throw lastErr;
+      const delay = 1000 * (attempt + 1);
+      logger.warn(`  [AI] Connection error, retrying in ${delay}ms (attempt ${attempt + 1}/${retries}): ${lastErr.message}`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
 const SENTINEL = {
   title: "Unknown",
   company: "Unknown",
@@ -52,11 +70,13 @@ ${snippet}`;
       setTimeout(() => reject(new Error("Filter request timed out")), 30000),
     );
     const completion = await Promise.race([
-      client.chat.completions.create({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0,
-      }),
+      withRetry(() =>
+        client.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0,
+        }),
+      ),
       timeout,
     ]);
     const text = completion.choices[0]?.message?.content || "";
@@ -102,11 +122,13 @@ ${snippet}`;
       setTimeout(() => reject(new Error("Programmer filter timed out")), 15000),
     );
     const completion = await Promise.race([
-      client.chat.completions.create({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0,
-      }),
+      withRetry(() =>
+        client.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0,
+        }),
+      ),
       timeout,
     ]);
     const text = completion.choices[0]?.message?.content || "";
@@ -237,11 +259,13 @@ export async function generateCoverLetter(
       ),
     );
     const completion = await Promise.race([
-      client.chat.completions.create({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-      }),
+      withRetry(() =>
+        client.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+        }),
+      ),
       timeout,
     ]);
     responseText = completion.choices[0]?.message?.content || "";
@@ -332,11 +356,13 @@ export async function generateApplicationEmail(
       ),
     );
     const completion = await Promise.race([
-      client.chat.completions.create({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-      }),
+      withRetry(() =>
+        client.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+        }),
+      ),
       timeout,
     ]);
     responseText = completion.choices[0]?.message?.content || "";
@@ -456,11 +482,13 @@ export async function generateAnswer(
       ),
     );
     const completion = await Promise.race([
-      client.chat.completions.create({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-      }),
+      withRetry(() =>
+        client.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+        }),
+      ),
       timeout,
     ]);
     responseText = completion.choices[0]?.message?.content || "";
@@ -556,11 +584,13 @@ export async function analyzeLinkedInPost(
       ),
     );
     const completion = await Promise.race([
-      client.chat.completions.create({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.2,
-      }),
+      withRetry(() =>
+        client.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.2,
+        }),
+      ),
       timeout,
     ]);
     responseText = completion.choices[0]?.message?.content || "";
@@ -662,11 +692,13 @@ export async function analyzeJob(
       ),
     );
     const completion = await Promise.race([
-      client.chat.completions.create({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.2,
-      }),
+      withRetry(() =>
+        client.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.2,
+        }),
+      ),
       timeout,
     ]);
     responseText = completion.choices[0]?.message?.content || "";
@@ -771,7 +803,15 @@ TASK:
 5. Keep the same factual content — no invented companies, titles, dates, or metrics.
 6. Extract the candidate's contact info (name, email, phone) from the base resume.
 
-OUTPUT FORMAT — Return ONLY valid JSON, no markdown, no explanation:
+CRITICAL — The output MUST fit on a single A4 page when rendered. To achieve this:
+- Include the 4-5 most relevant experience entries. You may omit the oldest or least relevant 1-2 roles if needed, but don't over-prune.
+- Use 2-3 bullet points per role. Each bullet must be ONE concise sentence (max 25 words) with a clear metric or outcome.
+- Summary: 2-3 short sentences (max 40 words total).
+- Skills: 8-12 items.
+- Education: one line.
+- Do NOT include project entries as separate experience blocks. Fold any project work into the relevant job bullets if appropriate, or omit it.
+
+OUTPUT FORMAT — Return ONLY valid JSON, no markdown, no explanation. The JSON must be complete and valid:
 {
   "fullName": "Candidate Name",
   "email": "email@example.com",
@@ -801,6 +841,27 @@ OUTPUT FORMAT — Return ONLY valid JSON, no markdown, no explanation:
 }`;
 }
 
+function extractJsonFromText(text: string): string | null {
+  // Try to find JSON object boundaries, handling nested braces
+  const firstBrace = text.indexOf('{');
+  if (firstBrace === -1) return null;
+  
+  let depth = 0;
+  for (let i = firstBrace; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}') {
+      depth--;
+      if (depth === 0) {
+        return text.slice(firstBrace, i + 1);
+      }
+    }
+  }
+  
+  // If no closing brace found, try regex as fallback
+  const match = /\{[\s\S]*\}/.exec(text);
+  return match ? match[0] : null;
+}
+
 export async function generateTailoredResume(
   job: {
     title: string | null;
@@ -817,36 +878,62 @@ export async function generateTailoredResume(
   const client = createClient(apiKey);
   const prompt = createTailoredResumePrompt(job, resumeText);
 
-  let responseText = "";
-  try {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Tailored resume generation timed out after 120s")),
-        120000,
-      ),
-    );
-    const completion = await Promise.race([
-      client.chat.completions.create({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.5,
-        max_tokens: 4096,
-      }),
-      timeout,
-    ]);
-    responseText = completion.choices[0]?.message?.content || "";
-  } catch (err) {
-    logger.error(`  [AI] Tailored resume error: ${(err as Error).message}`);
-    throw err;
-  }
+  // Try up to 2 times if JSON parsing fails
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    let responseText = "";
+    try {
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Tailored resume generation timed out after 120s")),
+          120000,
+        ),
+      );
+      const completion = await Promise.race([
+        withRetry(() =>
+          client.chat.completions.create({
+            model,
+            messages: [{ role: "user", content: prompt + (attempt > 0 ? "\n\nIMPORTANT: Your previous response was truncated. Please return a shorter, complete JSON response that fits within the token limit. Be more concise with bullet points and descriptions." : "") }],
+            temperature: 0.5,
+            max_tokens: 8192,
+          }),
+        ),
+        timeout,
+      ]);
+      responseText = completion.choices[0]?.message?.content || "";
+    } catch (err) {
+      logger.error(`  [AI] Tailored resume error: ${(err as Error).message}`);
+      throw err;
+    }
 
-  const cleaned = responseText
-    .replace(/^```(?:json)?\n?/i, "")
-    .replace(/\n?```$/i, "")
-    .trim();
+    const cleaned = responseText
+      .replace(/^```(?:json)?\n?/i, "")
+      .replace(/\n?```$/i, "")
+      .trim();
 
-  try {
-    const parsed = JSON.parse(cleaned);
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const jsonStr = extractJsonFromText(cleaned);
+      if (jsonStr) {
+        try {
+          parsed = JSON.parse(jsonStr);
+        } catch (innerErr) {
+          logger.warn(`  [AI] JSON extraction failed on attempt ${attempt + 1}: ${(innerErr as Error).message}`);
+          if (attempt === 1) {
+            throw new Error("AI returned invalid resume format — could not parse JSON after retry");
+          }
+          continue;
+        }
+      } else {
+        logger.warn(`  [AI] No JSON found in tailored resume response on attempt ${attempt + 1}`);
+        if (attempt === 1) {
+          throw new Error("AI returned invalid resume format — no JSON found");
+        }
+        continue;
+      }
+    }
+
     return {
       fullName: String(parsed.fullName || ""),
       email: String(parsed.email || ""),
@@ -855,14 +942,16 @@ export async function generateTailoredResume(
       linkedin: String(parsed.linkedin || ""),
       summary: String(parsed.summary || ""),
       experience: Array.isArray(parsed.experience)
-        ? parsed.experience.map((exp: unknown) => ({
-            title: String((exp as Record<string, unknown>).title || ""),
-            company: String((exp as Record<string, unknown>).company || ""),
-            duration: String((exp as Record<string, unknown>).duration || ""),
-            bullets: Array.isArray((exp as Record<string, unknown>).bullets)
-              ? (exp as Record<string, unknown>).bullets.map((b: unknown) => String(b))
-              : [],
-          }))
+        ? parsed.experience.map((exp: unknown) => {
+            const expRec = exp as Record<string, unknown>;
+            const bullets = Array.isArray(expRec.bullets) ? expRec.bullets as unknown[] : [];
+            return {
+              title: String(expRec.title || ""),
+              company: String(expRec.company || ""),
+              duration: String(expRec.duration || ""),
+              bullets: bullets.map((b: unknown) => String(b)),
+            };
+          })
         : [],
       skills: Array.isArray(parsed.skills) ? parsed.skills.map((s: unknown) => String(s)) : [],
       education: Array.isArray(parsed.education)
@@ -873,8 +962,7 @@ export async function generateTailoredResume(
           }))
         : [],
     };
-  } catch (err) {
-    logger.error(`  [AI] Failed to parse tailored resume JSON: ${(err as Error).message}`);
-    throw new Error("AI returned invalid resume format");
   }
+
+  throw new Error("AI returned invalid resume format — all attempts exhausted");
 }

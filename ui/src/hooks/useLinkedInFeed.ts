@@ -9,6 +9,7 @@ import {
   updateLinkedInPost,
   generateLinkedInCoverLetter,
   generateLinkedInTailoredResume,
+  getLinkedInTailoredResumeStatus,
   generateLinkedInEmail,
   getLinkedInPostQuestions,
   createLinkedInPostQuestion,
@@ -99,6 +100,20 @@ export function useGenerateLinkedInTailoredResume() {
     mutationFn: (id: number) => generateLinkedInTailoredResume(id),
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: qk.linkedinPost(id) });
+      qc.invalidateQueries({ queryKey: qk.linkedinTailoredResumeStatus(id) });
+    },
+  });
+}
+
+export function useLinkedInTailoredResumeStatus(id: number) {
+  return useQuery({
+    queryKey: qk.linkedinTailoredResumeStatus(id),
+    queryFn: () => getLinkedInTailoredResumeStatus(id),
+    enabled: id > 0,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.status === 'generating') return 3000;
+      return false;
     },
   });
 }

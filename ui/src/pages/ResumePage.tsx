@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { ResumeUpload } from '@/components/ResumeUpload';
 import { SectionNavigator } from '@/components/SectionNavigator';
@@ -12,8 +13,9 @@ import {
   useUpdateResumeText,
 } from '@/hooks/useResume';
 import { useSettings } from '@/hooks/useSettings';
-import { analyzeResume } from '@/api';
+import { analyzeResume, getAnalyzeResumeStatus } from '@/api';
 import type { WeakSpot } from '@/api';
+import { qk } from '@/lib/queryKeys';
 import {
   AlertCircle,
   Bot,
@@ -41,6 +43,7 @@ export function ResumePage() {
   const [isCoachOpen, setIsCoachOpen] = useState(false);
   const [weakSpots, setWeakSpots] = useState<WeakSpot[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -51,16 +54,38 @@ export function ResumePage() {
     if (isEditing && textareaRef.current) textareaRef.current.focus();
   }, [isEditing]);
 
-  // Proactive weak spot analysis on resume load
+  // Proactive weak spot analysis on resume load — fire-and-forget POST, then poll
   useEffect(() => {
     if (!resume?.extractedText) return;
     setWeakSpots([]);
+    setAnalysisJobId(null);
     setIsAnalyzing(true);
     analyzeResume()
-      .then((res) => setWeakSpots(res.weakSpots ?? []))
-      .catch(() => setWeakSpots([]))
-      .finally(() => setIsAnalyzing(false));
+      .then((res) => setAnalysisJobId(res.jobId))
+      .catch(() => setIsAnalyzing(false));
   }, [resume?.extractedText]);
+
+  const { data: analysisStatus } = useQuery({
+    queryKey: qk.analyzeResumeStatus(analysisJobId ?? ''),
+    queryFn: () => getAnalyzeResumeStatus(analysisJobId!),
+    enabled: !!analysisJobId,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.status === 'generating') return 3000;
+      return false;
+    },
+  });
+
+  useEffect(() => {
+    if (!analysisStatus) return;
+    if (analysisStatus.status === 'ready') {
+      setWeakSpots(analysisStatus.weakSpots ?? []);
+      setIsAnalyzing(false);
+    } else if (analysisStatus.status === 'failed') {
+      setWeakSpots([]);
+      setIsAnalyzing(false);
+    }
+  }, [analysisStatus]);
 
   const handleSave = async () => {
     setIsSaving(true);

@@ -11,6 +11,7 @@ import {
 import { useSettings } from "@/hooks/useSettings";
 import type { Job, JobQuestion } from "@/types/data";
 import {
+  AlertCircle,
   ArrowLeft,
   Check,
   Copy,
@@ -38,7 +39,8 @@ interface JobDetailPanelProps {
   readonly onUpdate: (data: { appStatus?: string; appNotes?: string }) => void;
   readonly onReanalyze: () => void;
   readonly onGenerateCoverLetter?: () => void;
-  readonly isGeneratingCoverLetter?: boolean;
+  readonly coverLetterStatus?: string;
+  readonly coverLetterError?: string | null;
   readonly onGenerateTailoredResume?: () => void;
   readonly isGeneratingTailoredResume?: boolean;
   readonly onDownloadTailoredResumePdf?: () => void;
@@ -123,13 +125,16 @@ function QuestionCard({
   const [draftQuestion, setDraftQuestion] = useState(q.question);
   const [draftAnswer, setDraftAnswer] = useState(q.answer ?? "");
 
+  const isGenerating = q.answerStatus === 'generating';
+  const isFailed = q.answerStatus === 'failed';
+
   const handleSave = () => {
     onUpdate(q.id, { question: draftQuestion, answer: draftAnswer });
     setIsEditing(false);
   };
 
   return (
-    <div className="rounded-lg p-4 space-y-3 bg-surface-elevated/40">
+    <div className={cn("rounded-lg p-4 space-y-3 bg-surface-elevated/40", isGenerating && "border border-cyan/15")}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           {isEditing ? (
@@ -145,50 +150,65 @@ function QuestionCard({
             </h4>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {isEditing ? (
-            <>
-              <button
-                onClick={handleSave}
-                className="p-1.5 rounded-md hover:bg-surface-elevated text-emerald transition-colors cursor-pointer"
-                title="Save"
-              >
-                <Save className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => {
-                  setDraftQuestion(q.question);
-                  setDraftAnswer(q.answer ?? "");
-                  setIsEditing(false);
-                }}
-                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer"
-                title="Cancel"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer"
-                title="Edit"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => onDelete(q.id)}
-                className="p-1.5 rounded-md hover:bg-surface-elevated text-rose transition-colors cursor-pointer"
-                title="Delete"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </>
-          )}
-        </div>
+        {!isGenerating && (
+          <div className="flex items-center gap-1 shrink-0">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={handleSave}
+                  className="p-1.5 rounded-md hover:bg-surface-elevated text-emerald transition-colors cursor-pointer"
+                  title="Save"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    setDraftQuestion(q.question);
+                    setDraftAnswer(q.answer ?? "");
+                    setIsEditing(false);
+                  }}
+                  className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer"
+                  title="Cancel"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="p-1.5 rounded-md hover:bg-surface-elevated text-text-muted transition-colors cursor-pointer"
+                  title="Edit"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => onDelete(q.id)}
+                  className="p-1.5 rounded-md hover:bg-surface-elevated text-rose transition-colors cursor-pointer"
+                  title="Delete"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
-      {isEditing ? (
+      {isGenerating ? (
+        <div className="flex items-center gap-2 text-sm text-cyan">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Generating answer...
+        </div>
+      ) : isFailed ? (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-rose/10 border border-rose/20 text-rose text-sm">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div className="space-y-0.5">
+            <p className="font-medium">Generation failed</p>
+            {q.answerError && <p className="text-xs opacity-80">{q.answerError}</p>}
+          </div>
+        </div>
+      ) : isEditing ? (
         <Textarea
           value={draftAnswer}
           onChange={(e) => setDraftAnswer(e.target.value)}
@@ -220,7 +240,8 @@ export function JobDetailPanel({
   onUpdate,
   onReanalyze,
   onGenerateCoverLetter,
-  isGeneratingCoverLetter,
+  coverLetterStatus = 'idle',
+  coverLetterError,
   onGenerateTailoredResume,
   isGeneratingTailoredResume,
   onDownloadTailoredResumePdf,
@@ -238,11 +259,9 @@ export function JobDetailPanel({
   const [notesDraft, setNotesDraft] = useState(job.appNotes ?? "");
   const [newQuestion, setNewQuestion] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [creatingQuestionText, setCreatingQuestionText] = useState("");
 
   const handleAddQuestion = () => {
     if (!newQuestion.trim() || !onCreateQuestion) return;
-    setCreatingQuestionText(newQuestion.trim());
     onCreateQuestion(newQuestion.trim());
     setNewQuestion("");
     setShowAddForm(false);
@@ -432,7 +451,7 @@ export function JobDetailPanel({
             <FileText className="w-3.5 h-3.5" />
             Cover Letter
           </h3>
-          {job.coverLetter && (
+          {job.coverLetter && coverLetterStatus !== 'generating' && (
             <div className="flex items-center gap-3">
               <CopyButton text={job.coverLetter} />
               <DownloadButton
@@ -443,14 +462,62 @@ export function JobDetailPanel({
           )}
         </div>
 
-        {job.coverLetter ? (
-          <div className="relative">
-            <Textarea
-              value={job.coverLetter}
-              readOnly
-              rows={12}
-              className="text-sm leading-relaxed resize-y"
-            />
+        {coverLetterStatus === 'failed' && coverLetterError ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-rose/10 border border-rose/20 text-rose text-sm">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium">Generation failed</p>
+                <p className="text-xs opacity-80">{coverLetterError}</p>
+              </div>
+            </div>
+            <button
+              onClick={onGenerateCoverLetter}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-subtle text-text-secondary text-sm hover:bg-surface-elevated transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Retry
+            </button>
+          </div>
+        ) : coverLetterStatus === 'generating' && job.coverLetter ? (
+          <div className="space-y-3">
+            <div className="relative opacity-60 pointer-events-none">
+              <Textarea
+                value={job.coverLetter}
+                readOnly
+                rows={12}
+                className="text-sm leading-relaxed resize-y"
+              />
+            </div>
+            <div className="flex items-center gap-2 text-sm text-cyan">
+              <div className="w-3.5 h-3.5 border-2 border-cyan border-t-transparent rounded-full animate-spin" />
+              Regenerating...
+            </div>
+          </div>
+        ) : coverLetterStatus === 'generating' ? (
+          <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+            <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center">
+              <div className="w-4 h-4 border-2 border-cyan border-t-transparent rounded-full animate-spin" />
+            </div>
+            <p className="text-sm text-text-secondary">Generating cover letter...</p>
+          </div>
+        ) : job.coverLetter ? (
+          <div className="space-y-3">
+            <div className="relative">
+              <Textarea
+                value={job.coverLetter}
+                readOnly
+                rows={12}
+                className="text-sm leading-relaxed resize-y"
+              />
+            </div>
+            <button
+              onClick={onGenerateCoverLetter}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-subtle text-text-secondary text-sm hover:bg-surface-elevated transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Regenerate
+            </button>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
@@ -465,20 +532,10 @@ export function JobDetailPanel({
             </div>
             <button
               onClick={onGenerateCoverLetter}
-              disabled={isGeneratingCoverLetter}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan text-white text-sm font-medium hover:bg-cyan/90 transition-all cursor-pointer"
             >
-              {isGeneratingCoverLetter ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Generate Cover Letter
-                </>
-              )}
+              <Sparkles className="w-3.5 h-3.5" />
+              Generate Cover Letter
             </button>
           </div>
         )}
@@ -502,7 +559,34 @@ export function JobDetailPanel({
           )}
         </div>
 
-        {job.tailoredResume ? (
+        {job.tailoredResumeStatus === 'failed' && job.tailoredResumeError ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-rose/10 border border-rose/20 text-rose text-sm">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium">Generation failed</p>
+                <p className="text-xs opacity-80">{job.tailoredResumeError}</p>
+              </div>
+            </div>
+            <button
+              onClick={onGenerateTailoredResume}
+              disabled={isGeneratingTailoredResume}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-subtle text-text-secondary text-sm hover:bg-surface-elevated disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+            >
+              {isGeneratingTailoredResume ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Retry
+                </>
+              )}
+            </button>
+          </div>
+        ) : job.tailoredResume ? (
           <div className="space-y-3">
             <details className="group">
               <summary className="flex items-center gap-2 text-xs text-text-muted cursor-pointer hover:text-text-secondary transition-colors">
@@ -622,7 +706,7 @@ export function JobDetailPanel({
             <Loader2 className="w-4 h-4 animate-spin" />
             <span className="text-sm">Loading questions...</span>
           </div>
-        ) : questions.length === 0 && !isCreatingQuestion ? (
+        ) : questions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
             <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center">
               <MessageCircleQuestion className="w-4 h-4 text-text-muted" />
@@ -636,19 +720,6 @@ export function JobDetailPanel({
           </div>
         ) : (
           <div className="space-y-3">
-            {isCreatingQuestion && (
-              <div className="rounded-lg p-4 space-y-3 bg-cyan/5 border border-cyan/15">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan" />
-                  <span className="text-sm font-medium text-cyan">
-                    Generating answer...
-                  </span>
-                </div>
-                <p className="text-sm text-text-secondary leading-relaxed">
-                  {creatingQuestionText}
-                </p>
-              </div>
-            )}
             {questions.map((q) => (
               <QuestionCard
                 key={q.id}

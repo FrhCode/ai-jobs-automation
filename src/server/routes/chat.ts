@@ -1,10 +1,15 @@
 import Elysia, { t } from 'elysia';
 import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import { db } from '../db';
 import { resume, settings } from '../db/schema';
 import { authPlugin } from '../plugins/auth';
 import { logger } from '../lib/logger';
 import OpenAI from 'openai';
+
+type WeakSpot = { snippet: string; issue: string; severity: string };
+type AnalysisJob = { status: 'generating' | 'ready' | 'failed'; weakSpots: WeakSpot[] | null; error: string | null };
+const analysisJobs = new Map<string, AnalysisJob>();
 
 function createClient(apiKey: string) {
   return new OpenAI({
@@ -196,26 +201,29 @@ export const chatRoutes = new Elysia({ prefix: '/api/chat' })
       return { message: 'No OpenRouter API key configured.' };
     }
 
+    const jobId = randomUUID();
+    analysisJobs.set(jobId, { status: 'generating', weakSpots: null, error: null });
+
     const client = createClient(apiKey);
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    const resumeText = resumeRow.extractedText;
 
-    logger.info(`[Analyze] Starting analysis with model: ${model}`);
-    logger.info(`[Analyze] Resume text length: ${resumeRow.extractedText.length} chars`);
+    logger.info(`[Analyze] Starting analysis job ${jobId} with model: ${model}`);
 
-    try {
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Analyze request timed out after 120s')), 120000),
-      );
-      logger.info('[Analyze] Sending request to OpenRouter...');
-      const completion = await Promise.race<OpenAI.Chat.Completions.ChatCompletion>([
-        client.chat.completions.create({
-          model,
-          temperature: 0.3,
-          max_tokens: 2048,
-          messages: [
-          {
-            role: 'system',
-            content: `You are a resume analyst. Today is ${today}. Use this as your reference date when evaluating employment timelines, dates, and anything time-sensitive.
+    (async () => {
+      try {
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Analyze request timed out after 120s')), 120000),
+        );
+        const completion = await Promise.race<OpenAI.Chat.Completions.ChatCompletion>([
+          client.chat.completions.create({
+            model,
+            temperature: 0.3,
+            max_tokens: 2048,
+            messages: [
+              {
+                role: 'system',
+                content: `You are a resume analyst. Today is ${today}. Use this as your reference date when evaluating employment timelines, dates, and anything time-sensitive.
 
 ABSOLUTE RULES — NEVER VIOLATE:
 1. NEVER flag "total years of experience" summary statements (e.g., "4 years of experience", "5+ years", "over 3 years") as "overstated" or "exaggerated" just because individual job durations might add up to slightly less. Total years is a rounded, good-faith estimate that includes internships, freelance, part-time, overlapping roles, or gaps not listed in detail. ONLY flag date claims if there is a clear factual impossibility (e.g., claiming 10 years but the oldest listed role is from 2 years ago).
@@ -226,40 +234,58 @@ SECTION-SPECIFIC RULES:
 - Personal projects are allowed to be descriptive rather than metric-driven.
 
 Return ONLY valid JSON with no explanation, no markdown fences, no extra text.`,
-          },
-          {
-            role: 'user',
-            content: `Analyze this resume and identify 3-7 weak spots that need improvement. For each weak spot, find an exact short phrase or sentence from the resume text.
+              },
+              {
+                role: 'user',
+                content: `Analyze this resume and identify 3-7 weak spots that need improvement. For each weak spot, find an exact short phrase or sentence from the resume text.
 
 IMPORTANT: Do NOT flag "total years of experience" claims as overstated. Rounded totals (e.g., "4 years") are normal and valid even if individual job tenures don't perfectly sum to that number.
 
 Resume:
 ---
-${resumeRow.extractedText}
+${resumeText}
 ---
 
 Return ONLY this JSON structure (no markdown, no explanation):
 {"weakSpots":[{"snippet":"exact short phrase copied from resume","issue":"concise reason it is weak","severity":"high"}]}
 
 severity must be "high" or "medium". snippet must be an exact substring of the resume text, kept short (under 80 chars).`,
-          },
-        ],
-      }),
-        timeout,
-      ]);
+              },
+            ],
+          }),
+          timeout,
+        ]);
 
-      logger.info('[Analyze] Response received, parsing...');
-      const raw = completion.choices[0]?.message?.content || '{}';
-      logger.info(`[Analyze] Raw response length: ${raw.length} chars`);
-      // Strip markdown fences if the model disobeys
-      const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-      const parsed = JSON.parse(cleaned);
-      logger.info(`[Analyze] Found ${parsed.weakSpots?.length ?? 0} weak spots`);
-      return { weakSpots: parsed.weakSpots ?? [] };
-    } catch (err) {
-      logger.error(`[Chat/Analyze] Error: ${(err as Error).message}`);
-      return { weakSpots: [] };
-    }
+        const raw = completion.choices[0]?.message?.content || '{}';
+        const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+        const parsed = JSON.parse(cleaned);
+        const weakSpots: WeakSpot[] = parsed.weakSpots ?? [];
+        logger.info(`[Analyze] Job ${jobId} found ${weakSpots.length} weak spots`);
+        analysisJobs.set(jobId, { status: 'ready', weakSpots, error: null });
+      } catch (err) {
+        const errorMsg = (err as Error).message;
+        logger.error(`[Analyze] Job ${jobId} failed: ${errorMsg}`);
+        analysisJobs.set(jobId, { status: 'failed', weakSpots: null, error: errorMsg });
+      }
+
+      // Clean up after 10 minutes to prevent memory leaks
+      setTimeout(() => analysisJobs.delete(jobId), 10 * 60 * 1000);
+    })();
+
+    set.status = 202;
+    return { jobId, status: 'generating' };
   }, {
     requireAuth: true,
+  })
+
+  .get('/resume/analyze/status/:jobId', async ({ params, set }) => {
+    const job = analysisJobs.get(params.jobId);
+    if (!job) {
+      set.status = 404;
+      return { message: 'Analysis job not found or expired.' };
+    }
+    return { jobId: params.jobId, status: job.status, weakSpots: job.weakSpots, error: job.error };
+  }, {
+    requireAuth: true,
+    params: t.Object({ jobId: t.String() }),
   });

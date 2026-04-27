@@ -43,6 +43,20 @@
       "when": 1777222263619,
       "tag": "0005_messy_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777303827447,
+      "tag": "0006_clammy_juggernaut",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777309907832,
+      "tag": "0007_living_invisible_woman",
+      "breakpoints": true
     }
   ]
 }

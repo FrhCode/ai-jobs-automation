@@ -138,7 +138,23 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.2.0** (Current)
+**1.2.2** (Current)
+
+- **Async Cover Letter Generation** — Cover letter generation now returns immediately (HTTP 202) and the UI polls for status every 3 seconds; no more blocking on a 60s AI call
+- **Async Application Question Answering** — Each question is submitted instantly and appears in the list with a per-question spinner while the answer is being generated; multiple questions can generate in parallel
+- **Async Resume Weak Spot Analysis** — Weak spot analysis is now fire-and-forget; the resume page shows an analyzing indicator and populates highlights once the AI finishes
+- **Cover Letter Regenerate** — After a cover letter is generated, a "Regenerate" button lets you request a fresh version without losing the current one until the new one is ready
+- **Polling Architecture** — All three features follow the same pattern as tailored resume: POST starts the job, GET `/status` is polled every 3 seconds, UI updates automatically on completion or failure
+
+**1.2.1**
+
+- **Tailored Resume PDF — One Page** — Compact layout with smaller margins/fonts and company+duration on one line so the CV always fits on a single A4 page
+- **Tailored Resume PDF — Bullet Alignment Fix** — Fixed cumulative horizontal drift that caused bullets to indent further right with each successive entry
+- **Noto Sans Font Embedding** — Replaced pdfkit's built-in Helvetica fonts with embedded Noto Sans TTF files; eliminates all Unicode stripping workarounds (smart quotes, em-dashes, accented chars now render correctly)
+- **Simplified PDF Sanitization** — `sanitizeText` reduced from 30+ lines of manual replacements to a single regex that only removes invisible control characters
+- **AI Prompt — 1-Page Constraints** — Updated tailored resume prompt to enforce 4-5 relevant entries, 2-3 concise bullets (max 25 words), and a 2-3 sentence summary so generated content naturally fits one page
+
+**1.2.0**
 
 - **AI Resume Coach** — Interactive chat panel that critiques resume sections, asks targeted questions, and suggests concrete improvements with streaming responses
 - **Resume Weak Spot Analysis** — AI automatically analyzes resume on load and highlights 3-7 weak spots inline; clicking any spot opens the coach for that issue

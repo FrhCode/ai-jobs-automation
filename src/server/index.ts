@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { eq } from 'drizzle-orm';
-import { db } from './db';
+import { db, client } from './db';
 import { settings, queue } from './db/schema';
 import { app } from './app';
-import { reloadCronSchedule } from './lib/cronScheduler';
-import { startChunkCleanupCron } from './lib/chunkCleanup';
+import { reloadCronSchedule, stopCronSchedule } from './lib/cronScheduler';
+import { startChunkCleanupCron, stopChunkCleanupCron } from './lib/chunkCleanup';
 import { logger } from './lib/logger';
 
 async function seedPasswordHash() {
@@ -51,6 +51,54 @@ async function bootstrap() {
   app.listen(PORT, () => {
     logger.info(`[Server] Listening on http://localhost:${PORT}`);
   });
+
+  // Graceful shutdown
+  let isShuttingDown = false;
+  async function shutdown(signal: string) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    logger.info(`[Shutdown] Received ${signal}, closing gracefully...`);
+
+    // Force exit if something hangs
+    const forceExit = setTimeout(() => {
+      logger.warn('[Shutdown] Forced exit after timeout');
+      process.exit(1);
+    }, 5000);
+
+    // Stop accepting new connections
+    try {
+      app.stop();
+    } catch {
+      /* ignore */
+    }
+
+    // Stop background jobs
+    stopCronSchedule();
+    stopChunkCleanupCron();
+
+    // Close DB pool
+    try {
+      await client.end();
+      logger.info('[Shutdown] Database connections closed');
+    } catch (err) {
+      logger.error('[Shutdown] Error closing DB:', err);
+    }
+
+    clearTimeout(forceExit);
+    logger.info('[Shutdown] Done');
+    process.exit(0);
+  }
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+  // Windows doesn't support SIGINT well in some terminals
+  if (process.platform === 'win32') {
+    process.on('message', (msg) => {
+      if (msg === 'shutdown') shutdown('message');
+    });
+  }
 }
 
 bootstrap().catch((err) => {

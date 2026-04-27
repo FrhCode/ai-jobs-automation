@@ -490,37 +490,87 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       return { message: 'Resume and API key required' };
     }
 
-    const tailoredResume = await generateTailoredResume(
-      {
-        title: post.title,
-        company: post.company,
-        location: post.location,
-        descriptionSummary: post.postContent,
-        matchedSkills: post.matchedSkills,
-        missingSkills: post.missingSkills,
-      },
-      resumeText,
-      apiKey,
-      model,
-    );
-    const pdfBuffer = await renderResumePdf(tailoredResume);
+    if (post.tailoredResumeStatus === 'generating') {
+      set.status = 409;
+      return { status: 'generating', message: 'Tailored resume generation already in progress.' };
+    }
 
-    const cvsDir = 'uploads/cvs';
-    await mkdir(cvsDir, { recursive: true });
-    const pdfPath = `${cvsDir}/linkedin-post-${params.id}.pdf`;
-    await writeFile(pdfPath, pdfBuffer);
+    await db.update(linkedinPosts)
+      .set({ tailoredResumeStatus: 'generating', tailoredResumeError: null, updatedAt: new Date() })
+      .where(eq(linkedinPosts.id, params.id));
 
-    const [updated] = await db
-      .update(linkedinPosts)
-      .set({
-        tailoredResume: JSON.stringify(tailoredResume),
-        tailoredResumePdfPath: pdfPath,
-        updatedAt: new Date(),
-      })
-      .where(eq(linkedinPosts.id, params.id))
-      .returning();
+    (async () => {
+      try {
+        const tailoredResume = await generateTailoredResume(
+          {
+            title: post.title,
+            company: post.company,
+            location: post.location,
+            descriptionSummary: post.postContent,
+            matchedSkills: post.matchedSkills,
+            missingSkills: post.missingSkills,
+          },
+          resumeText,
+          apiKey,
+          model,
+        );
+        const pdfBuffer = await renderResumePdf(tailoredResume);
 
-    return { tailoredResume, post: updated };
+        const cvsDir = 'uploads/cvs';
+        await mkdir(cvsDir, { recursive: true });
+        const pdfPath = `${cvsDir}/linkedin-post-${params.id}.pdf`;
+        await writeFile(pdfPath, pdfBuffer);
+
+        await db.update(linkedinPosts)
+          .set({
+            tailoredResume: JSON.stringify(tailoredResume),
+            tailoredResumePdfPath: pdfPath,
+            tailoredResumeStatus: 'ready',
+            tailoredResumeError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(linkedinPosts.id, params.id));
+
+        logger.info(`[TailoredResume] LinkedIn post ${params.id} completed successfully`);
+      } catch (err) {
+        const errorMsg = (err as Error).message;
+        logger.error(`[TailoredResume] LinkedIn post ${params.id} failed: ${errorMsg}`);
+        await db.update(linkedinPosts)
+          .set({
+            tailoredResumeStatus: 'failed',
+            tailoredResumeError: errorMsg,
+            updatedAt: new Date(),
+          })
+          .where(eq(linkedinPosts.id, params.id));
+      }
+    })();
+
+    set.status = 202;
+    return { status: 'generating', message: 'Tailored resume generation started.' };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .get('/linkedin-posts/:id/tailored-resume/status', async ({ params, set }) => {
+    const [post] = await db.select({
+      id: linkedinPosts.id,
+      tailoredResumeStatus: linkedinPosts.tailoredResumeStatus,
+      tailoredResumeError: linkedinPosts.tailoredResumeError,
+      tailoredResumePdfPath: linkedinPosts.tailoredResumePdfPath,
+    }).from(linkedinPosts).where(eq(linkedinPosts.id, params.id)).limit(1);
+
+    if (!post) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    return {
+      postId: post.id,
+      status: post.tailoredResumeStatus || 'idle',
+      error: post.tailoredResumeError,
+      pdfPath: post.tailoredResumePdfPath,
+    };
   }, {
     requireAuth: true,
     params: z.object({ id: z.coerce.number().int().positive() }),

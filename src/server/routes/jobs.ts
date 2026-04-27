@@ -151,14 +151,55 @@ export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
       return { message: 'No OpenRouter API key configured.' };
     }
 
-    const coverLetter = await generateCoverLetter(job, resumeRow.extractedText, apiKey, model);
+    if (job.coverLetterStatus === 'generating') {
+      set.status = 409;
+      return { status: 'generating', message: 'Cover letter generation already in progress.' };
+    }
 
-    const [updated] = await db.update(jobs)
-      .set({ coverLetter, updatedAt: new Date() })
-      .where(eq(jobs.id, params.id))
-      .returning();
+    await db.update(jobs)
+      .set({ coverLetterStatus: 'generating', coverLetterError: null, updatedAt: new Date() })
+      .where(eq(jobs.id, params.id));
 
-    return updated;
+    (async () => {
+      try {
+        const coverLetter = await generateCoverLetter(job, resumeRow.extractedText, apiKey, model);
+        await db.update(jobs)
+          .set({ coverLetter, coverLetterStatus: 'ready', coverLetterError: null, updatedAt: new Date() })
+          .where(eq(jobs.id, params.id));
+        logger.info(`[CoverLetter] Job ${params.id} completed successfully`);
+      } catch (err) {
+        const errorMsg = (err as Error).message;
+        logger.error(`[CoverLetter] Job ${params.id} failed: ${errorMsg}`);
+        await db.update(jobs)
+          .set({ coverLetterStatus: 'failed', coverLetterError: errorMsg, updatedAt: new Date() })
+          .where(eq(jobs.id, params.id));
+      }
+    })();
+
+    set.status = 202;
+    return { status: 'generating', message: 'Cover letter generation started.' };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .get('/:id/cover-letter/status', async ({ params, set }) => {
+    const [job] = await db.select({
+      id: jobs.id,
+      coverLetterStatus: jobs.coverLetterStatus,
+      coverLetterError: jobs.coverLetterError,
+    }).from(jobs).where(eq(jobs.id, params.id)).limit(1);
+
+    if (!job) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    return {
+      jobId: job.id,
+      status: job.coverLetterStatus || 'idle',
+      error: job.coverLetterError,
+    };
   }, {
     requireAuth: true,
     params: z.object({ id: z.coerce.number().int().positive() }),
@@ -189,24 +230,78 @@ export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
       return { message: 'No OpenRouter API key configured.' };
     }
 
-    const tailoredResume = await generateTailoredResume(job, resumeRow.extractedText, apiKey, model);
-    const pdfBuffer = await renderResumePdf(tailoredResume);
+    // If already generating, don't start a new one
+    if (job.tailoredResumeStatus === 'generating') {
+      set.status = 409;
+      return { status: 'generating', message: 'Tailored resume generation already in progress.' };
+    }
 
-    const cvsDir = 'uploads/cvs';
-    await mkdir(cvsDir, { recursive: true });
-    const pdfPath = `${cvsDir}/job-${params.id}.pdf`;
-    await writeFile(pdfPath, pdfBuffer);
+    // Mark as generating immediately
+    await db.update(jobs)
+      .set({ tailoredResumeStatus: 'generating', tailoredResumeError: null, updatedAt: new Date() })
+      .where(eq(jobs.id, params.id));
 
-    const [updated] = await db.update(jobs)
-      .set({
-        tailoredResume: JSON.stringify(tailoredResume),
-        tailoredResumePdfPath: pdfPath,
-        updatedAt: new Date(),
-      })
-      .where(eq(jobs.id, params.id))
-      .returning();
+    // Fire-and-forget background processing
+    (async () => {
+      try {
+        const tailoredResume = await generateTailoredResume(job, resumeRow.extractedText, apiKey, model);
+        const pdfBuffer = await renderResumePdf(tailoredResume);
 
-    return updated;
+        const cvsDir = 'uploads/cvs';
+        await mkdir(cvsDir, { recursive: true });
+        const pdfPath = `${cvsDir}/job-${params.id}.pdf`;
+        await writeFile(pdfPath, pdfBuffer);
+
+        await db.update(jobs)
+          .set({
+            tailoredResume: JSON.stringify(tailoredResume),
+            tailoredResumePdfPath: pdfPath,
+            tailoredResumeStatus: 'ready',
+            tailoredResumeError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobs.id, params.id));
+
+        logger.info(`[TailoredResume] Job ${params.id} completed successfully`);
+      } catch (err) {
+        const errorMsg = (err as Error).message;
+        logger.error(`[TailoredResume] Job ${params.id} failed: ${errorMsg}`);
+        await db.update(jobs)
+          .set({
+            tailoredResumeStatus: 'failed',
+            tailoredResumeError: errorMsg,
+            updatedAt: new Date(),
+          })
+          .where(eq(jobs.id, params.id));
+      }
+    })();
+
+    set.status = 202;
+    return { status: 'generating', message: 'Tailored resume generation started.' };
+  }, {
+    requireAuth: true,
+    params: z.object({ id: z.coerce.number().int().positive() }),
+  })
+
+  .get('/:id/tailored-resume/status', async ({ params, set }) => {
+    const [job] = await db.select({
+      id: jobs.id,
+      tailoredResumeStatus: jobs.tailoredResumeStatus,
+      tailoredResumeError: jobs.tailoredResumeError,
+      tailoredResumePdfPath: jobs.tailoredResumePdfPath,
+    }).from(jobs).where(eq(jobs.id, params.id)).limit(1);
+
+    if (!job) {
+      set.status = 404;
+      return { message: 'Not found' };
+    }
+
+    return {
+      jobId: job.id,
+      status: job.tailoredResumeStatus || 'idle',
+      error: job.tailoredResumeError,
+      pdfPath: job.tailoredResumePdfPath,
+    };
   }, {
     requireAuth: true,
     params: z.object({ id: z.coerce.number().int().positive() }),
@@ -280,12 +375,27 @@ export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
       return { message: 'No OpenRouter API key configured.' };
     }
 
-    const answer = await generateAnswer(body.question, job, resumeRow.extractedText, apiKey, model);
-
     const [inserted] = await db.insert(jobQuestions)
-      .values({ jobId: params.id, question: body.question, answer })
+      .values({ jobId: params.id, question: body.question, answerStatus: 'generating' })
       .returning();
 
+    (async () => {
+      try {
+        const answer = await generateAnswer(body.question, job, resumeRow.extractedText, apiKey, model);
+        await db.update(jobQuestions)
+          .set({ answer, answerStatus: 'ready', answerError: null, updatedAt: new Date() })
+          .where(eq(jobQuestions.id, inserted.id));
+        logger.info(`[Question] Question ${inserted.id} answered successfully`);
+      } catch (err) {
+        const errorMsg = (err as Error).message;
+        logger.error(`[Question] Question ${inserted.id} failed: ${errorMsg}`);
+        await db.update(jobQuestions)
+          .set({ answerStatus: 'failed', answerError: errorMsg, updatedAt: new Date() })
+          .where(eq(jobQuestions.id, inserted.id));
+      }
+    })();
+
+    set.status = 202;
     return inserted;
   }, {
     requireAuth: true,

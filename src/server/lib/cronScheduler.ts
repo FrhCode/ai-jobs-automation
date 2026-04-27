@@ -76,6 +76,14 @@ export async function runCronTask(): Promise<{ searchUrls: number; found: number
   return { searchUrls: searchUrls.length, found: allUrls.length, newUrls: newUrls.length };
 }
 
+export function stopCronSchedule(): void {
+  if (activeTask) {
+    activeTask.stop();
+    activeTask = null;
+    logger.info('[Cron] Scheduler stopped');
+  }
+}
+
 export async function reloadCronSchedule(): Promise<void> {
   if (activeTask) {
     activeTask.stop();

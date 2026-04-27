@@ -1,10 +1,11 @@
 {
   "name": "job-search-automation",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Automate job evaluation against resume using AI",
   "main": "index.js",
   "scripts": {
-    "dev:server": "bun --watch src/server/index.ts",
+    "dev:kill": "bun scripts/kill-ports.js",
+    "dev:server": "bun run dev:kill && bun --watch src/server/index.ts",
     "dev:client": "cd ui && bun run dev",
     "dev": "bun run --parallel dev:server dev:client",
     "build": "cd ui && bun run build",

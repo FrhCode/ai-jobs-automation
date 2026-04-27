@@ -1,17 +1,22 @@
 import { useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { JobDetailPanel } from '@/components/JobDetailPanel';
+import { qk } from '@/lib/queryKeys';
 import {
   useJob,
   useUpdateJob,
   useReanalyzeJob,
   useGenerateCoverLetter,
+  useCoverLetterStatus,
   useGenerateTailoredResume,
+  useTailoredResumeStatus,
   useJobQuestions,
   useCreateJobQuestion,
   useUpdateJobQuestion,
   useDeleteJobQuestion,
 } from '@/hooks/useJobs';
 import type { AppStatus } from '@/shared/constants';
+import { useEffect } from 'react';
 
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,8 +25,26 @@ export function JobDetailPage() {
   const updateJob = useUpdateJob();
   const reanalyze = useReanalyzeJob();
   const generateCoverLetter = useGenerateCoverLetter();
+  const { data: coverLetterStatusData } = useCoverLetterStatus(jobId);
   const generateTailoredResume = useGenerateTailoredResume();
+  const { data: statusData } = useTailoredResumeStatus(jobId);
   const { data: questions, isLoading: questionsLoading } = useJobQuestions(jobId);
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (statusData && statusData.status !== 'generating') {
+      qc.invalidateQueries({ queryKey: qk.job(jobId) });
+      qc.invalidateQueries({ queryKey: qk.jobs() });
+    }
+  }, [statusData, jobId, qc]);
+
+  useEffect(() => {
+    if (coverLetterStatusData && coverLetterStatusData.status === 'ready') {
+      qc.invalidateQueries({ queryKey: qk.job(jobId) });
+    }
+  }, [coverLetterStatusData, jobId, qc]);
+
+  const isGeneratingTailoredResume = generateTailoredResume.isPending || job?.tailoredResumeStatus === 'generating';
   const createQuestion = useCreateJobQuestion();
   const updateQuestion = useUpdateJobQuestion();
   const deleteQuestion = useDeleteJobQuestion();
@@ -46,9 +69,10 @@ export function JobDetailPage() {
       onUpdate={(data) => updateJob.mutate({ id: jobId, appStatus: data.appStatus as AppStatus, appNotes: data.appNotes })}
       onReanalyze={() => reanalyze.mutate({ id: jobId })}
       onGenerateCoverLetter={() => generateCoverLetter.mutate({ id: jobId })}
-      isGeneratingCoverLetter={generateCoverLetter.isPending}
+      coverLetterStatus={coverLetterStatusData?.status ?? job.coverLetterStatus ?? 'idle'}
+      coverLetterError={coverLetterStatusData?.error ?? job.coverLetterError ?? null}
       onGenerateTailoredResume={() => generateTailoredResume.mutate({ id: jobId })}
-      isGeneratingTailoredResume={generateTailoredResume.isPending}
+      isGeneratingTailoredResume={isGeneratingTailoredResume}
       onDownloadTailoredResumePdf={() => {
         window.open(`${import.meta.env.VITE_API_URL}/api/jobs/${jobId}/tailored-resume.pdf`, '_blank');
       }}
