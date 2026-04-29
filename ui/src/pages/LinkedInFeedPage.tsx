@@ -83,6 +83,7 @@ export function LinkedInFeedPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [showBatchHistory, setShowBatchHistory] = useState(false);
   const [deletePostId, setDeletePostId] = useState<number | null>(null);
+  const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
 
   // Single source of truth: all filter + page + batch state from URL
   const page = Number(searchParams.get("page")) || 1;
@@ -261,6 +262,11 @@ export function LinkedInFeedPage() {
     e.stopPropagation();
     const next =
       currentStatus === "not_interested" ? "not_applied" : "not_interested";
+    if (next === "not_interested") {
+      setDismissedIds((prev) => new Set([...prev, postId]));
+    } else {
+      setDismissedIds((prev) => { const s = new Set(prev); s.delete(postId); return s; });
+    }
     update.mutate({ id: postId, appStatus: next });
   };
 
@@ -640,7 +646,7 @@ export function LinkedInFeedPage() {
           )}
 
           <AnimatePresence mode="popLayout">
-          {data?.posts.map((post) => (
+          {data?.posts.filter((p) => !dismissedIds.has(p.id)).map((post) => (
             <motion.div
               key={post.id}
               layout
