@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/queryKeys';
+import type { LinkedInPost } from '@/types/data';
 import {
   getLinkedInPosts,
   getLinkedInPost,
@@ -20,6 +21,8 @@ import {
   getLinkedInReminders,
   getRecruiterContact,
 } from '@/api';
+
+type PostsPage = { posts: LinkedInPost[]; total: number; page: number };
 
 export function useLinkedInPosts(page = 1, filters: { isJob?: boolean; recommendation?: string; minScore?: number; appStatus?: string } = {}) {
   return useQuery({
@@ -57,11 +60,24 @@ export function useUpdateLinkedInPost() {
   return useMutation({
     mutationFn: ({ id, ...body }: { id: number; appStatus?: string; appNotes?: string; appliedAt?: string | null; emailSentAt?: string | null; reminderAt?: string | null }) =>
       updateLinkedInPost(id, body),
-    onSuccess: (data, vars) => {
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: qk.linkedinPosts() });
+      const snapshots = qc.getQueriesData<PostsPage>({ queryKey: qk.linkedinPosts() });
+      const { id, ...fields } = vars;
+      qc.setQueriesData<PostsPage>({ queryKey: qk.linkedinPosts() }, (old) => {
+        if (!old) return old;
+        return { ...old, posts: old.posts.map((p) => p.id === id ? { ...p, ...fields } : p) };
+      });
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
+    onSettled: (data, _err, vars) => {
       qc.invalidateQueries({ queryKey: qk.linkedinPost(vars.id) });
       qc.invalidateQueries({ queryKey: qk.linkedinPosts() });
       qc.invalidateQueries({ queryKey: qk.linkedinReminders() });
-      if (vars.emailSentAt && data.contactEmail) {
+      if (vars.emailSentAt && data?.contactEmail) {
         qc.invalidateQueries({ queryKey: qk.recruiterContact(data.contactEmail) });
       }
     },
@@ -183,7 +199,19 @@ export function useDeleteLinkedInPost() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => deleteLinkedInPost(id),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: qk.linkedinPosts() });
+      const snapshots = qc.getQueriesData<PostsPage>({ queryKey: qk.linkedinPosts() });
+      qc.setQueriesData<PostsPage>({ queryKey: qk.linkedinPosts() }, (old) => {
+        if (!old) return old;
+        return { ...old, posts: old.posts.filter((p) => p.id !== id), total: old.total - 1 };
+      });
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: qk.linkedinPosts() });
     },
   });
