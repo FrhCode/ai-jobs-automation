@@ -228,13 +228,15 @@ SECTION-SPECIFIC RULES:
 - For WORK EXPERIENCE sections: expect metrics, business impact, outcomes, and quantified achievements.
 - READ COMPLETE BULLET POINTS: a bullet may span multiple sentences. Do NOT flag a bullet for "lacking metrics" or "missing impact" if quantified results appear ANYWHERE in that same bullet point.
 - METRIC DETECTION RULE: Before flagging any bullet for "lacking metrics" or "missing impact," check whether the bullet already contains numbers, percentages, dollar amounts, time savings, user counts, or other quantified results. If it DOES contain any quantified result, you must NOT flag it as lacking metrics. Instead, evaluate whether the metric is strong or if additional metrics would help.
+- WELL-WRITTEN BULLET RULE: If a bullet point has ALL three of (1) a strong action verb, (2) specific technologies, tools, or scope, and (3) a quantified outcome or metric, it is NOT a weak spot. Do NOT flag it for wording, style, or minor phrasing preferences.
+- QUALITY OVER QUANTITY: Do NOT invent weak spots to hit a target number. If the resume only has 1 or 2 genuine issues, return only those. Never flag the same line twice for different reasons across re-analyses.
 - Personal projects are allowed to be descriptive rather than metric-driven.
 
 Return ONLY valid JSON with no explanation, no markdown fences, no extra text.`,
             },
             {
               role: 'user',
-              content: `Analyze this resume and identify 3-7 weak spots that need improvement. For each weak spot, find an exact short phrase or sentence from the resume text.
+              content: `Analyze this resume and identify up to 5 genuine weak spots that need improvement. For each weak spot, find an exact short phrase or sentence from the resume text.
 
 IMPORTANT: Do NOT flag "total years of experience" claims as overstated. Rounded totals (e.g., "4 years") are normal and valid even if individual job tenures don't perfectly sum to that number.
 
