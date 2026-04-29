@@ -651,7 +651,7 @@ export function LinkedInFeedPage() {
               key={post.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -60, scale: 0.96, transition: { duration: 0.26 } }}
+              exit={{ opacity: 0, x: -60, scale: 0.96, pointerEvents: "none", transition: { duration: 0.26 } }}
               transition={{ duration: 0.2, ease: "easeOut" }}
               onClick={() => navigate(`/linkedin-feed/${post.id}`)}
               className="glass-card rounded-xl overflow-hidden cursor-pointer hover:border-cyan/30 transition-colors"
