@@ -138,7 +138,14 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.2.2** (Current)
+**1.2.3** (Current)
+
+- **AI "Unknown" Fix** — Removed input truncation (8K/6K/4K character limits) and artificial Promise.race timeouts from all AI analysis paths. Hardened extraction prompts with `CRITICAL: Never return "Unknown" or empty strings. Infer from context...` for both job boards and LinkedIn posts
+- **LinkedIn Batch Date Fix** — Batch history now uses `max(updatedAt)` instead of `min(createdAt)`, so batch dates reflect when they were actually processed rather than the oldest post's original insertion date
+- **Unique Tailored Resume Filenames** — Downloaded resume PDFs now include company + job title + date + random 6-char suffix (e.g., `Google-Software-Engineer-Resume-Apr29-a3k9m2.pdf`) to prevent filename collisions with existing laptop files
+- **LinkedIn Feed Sort by Score** — Default sort changed from `createdAt` to `score` descending, so highest-scored opportunities appear at the top
+
+**1.2.2**
 
 - **Async Cover Letter Generation** — Cover letter generation now returns immediately (HTTP 202) and the UI polls for status every 3 seconds; no more blocking on a 60s AI call
 - **Async Application Question Answering** — Each question is submitted instantly and appears in the list with a per-question spinner while the answer is being generated; multiple questions can generate in parallel

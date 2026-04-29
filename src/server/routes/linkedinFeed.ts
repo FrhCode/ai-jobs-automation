@@ -13,6 +13,17 @@ import { mkdir, writeFile, readFile, rm, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { logger } from '../lib/logger';
 
+function sanitizeFilename(str: string): string {
+  return str
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+function randomSuffix(length = 6): string {
+  return Math.random().toString(36).slice(2, 2 + length);
+}
+
 export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
   .use(authPlugin)
 
@@ -176,12 +187,12 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
         total: sql<number>`count(*)`,
         processed: sql<number>`sum(case when ${linkedinPosts.aiAnalyzed} = true then 1 else 0 end)`,
         failed: sql<number>`sum(case when ${linkedinPosts.aiFailed} = true then 1 else 0 end)`,
-        createdAt: sql<string>`min(${linkedinPosts.createdAt})`,
+        createdAt: sql<string>`max(${linkedinPosts.updatedAt})`,
       })
       .from(linkedinPosts)
       .where(sql`${linkedinPosts.batchId} is not null`)
       .groupBy(linkedinPosts.batchId)
-      .orderBy(sql`max(${linkedinPosts.createdAt}) desc`);
+      .orderBy(sql`max(${linkedinPosts.updatedAt}) desc`);
 
     return rows.map((r) => ({
       batchId: r.batchId!,
@@ -292,7 +303,7 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
   .get('/linkedin-posts', async ({ query }) => {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 20);
-    const sort = (query.sort as string) ?? 'createdAt';
+    const sort = (query.sort as string) ?? 'score';
     const dir = (query.dir as string) ?? 'desc';
     const isJobFilter = query.isJob === 'true' ? true : query.isJob === 'false' ? false : undefined;
     const recommendationFilter = (query.recommendation as string) || undefined;
@@ -591,7 +602,11 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
     }
 
     set.headers['Content-Type'] = 'application/pdf';
-    set.headers['Content-Disposition'] = `attachment; filename="${post.company || 'Company'}-Resume.pdf"`;
+    const company = sanitizeFilename(post.company || 'Company');
+    const title = sanitizeFilename(post.title || 'Job');
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).replace(/\s/g, '');
+    const suffix = randomSuffix();
+    set.headers['Content-Disposition'] = `attachment; filename="${company}-${title}-Resume-${dateStr}-${suffix}.pdf"`;
     return file;
   }, {
     requireAuth: true,

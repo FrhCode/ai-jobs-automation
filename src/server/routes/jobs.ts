@@ -18,6 +18,17 @@ import { renderResumePdf } from '../lib/resumePdfRenderer';
 import { logger } from '../lib/logger';
 import { mkdir, writeFile } from 'node:fs/promises';
 
+function sanitizeFilename(str: string): string {
+  return str
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+function randomSuffix(length = 6): string {
+  return Math.random().toString(36).slice(2, 2 + length);
+}
+
 export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
   .use(authPlugin)
 
@@ -322,7 +333,11 @@ export const jobsRoutes = new Elysia({ prefix: '/api/jobs' })
     }
 
     set.headers['Content-Type'] = 'application/pdf';
-    set.headers['Content-Disposition'] = `attachment; filename="${job.company || 'Company'}-Resume.pdf"`;
+    const company = sanitizeFilename(job.company || 'Company');
+    const title = sanitizeFilename(job.title || 'Job');
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).replace(/\s/g, '');
+    const suffix = randomSuffix();
+    set.headers['Content-Disposition'] = `attachment; filename="${company}-${title}-Resume-${dateStr}-${suffix}.pdf"`;
     return file;
   }, {
     requireAuth: true,
