@@ -22,9 +22,9 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
 }
 
 const SENTINEL = {
-  title: "Unknown",
-  company: "Unknown",
-  location: "Unknown",
+  title: "",
+  company: "",
+  location: "",
   salary: "Not listed",
   descriptionSummary: "Could not analyze",
   score: -1,
@@ -35,6 +35,11 @@ const SENTINEL = {
   applyUrl: "",
   contactEmail: "",
 };
+
+function normStr(val: unknown): string {
+  const s = String(val || "").trim();
+  return s.toLowerCase() === "unknown" ? "" : s;
+}
 
 function createClient(apiKey: string) {
   return new OpenAI({
@@ -47,44 +52,40 @@ function createClient(apiKey: string) {
   });
 }
 
-async function classifyIsTech(
+async function classifyIsProgrammingJobBoard(
   rawText: string,
   scrapeStatus: string,
   model: string,
   client: OpenAI,
-): Promise<{ isTech: boolean; title: string; company: string }> {
+): Promise<{ isProgrammingJob: boolean; title: string; company: string }> {
   if (scrapeStatus === "login_wall" || scrapeStatus === "failed") {
-    return { isTech: true, title: "", company: "" };
+    return { isProgrammingJob: true, title: "", company: "" };
   }
-  const snippet = (rawText || "").slice(0, 150);
-  if (!snippet.trim()) return { isTech: true, title: "", company: "" };
+  const snippet = rawText || "";
+  if (!snippet.trim()) return { isProgrammingJob: true, title: "", company: "" };
 
-  const prompt = `Is this a software/tech/IT/engineering job? JSON only, no markdown:
-{"isTech": true|false, "title": "<title>", "company": "<company>"}
+  const prompt = `Is this a programming/software/developer/tech job? JSON only, no markdown:
+{"isProgrammingJob": true|false, "title": "<title — infer from posting if not explicit>", "company": "<company — infer from posting if not explicit>"}
 
-Job text (first 150 chars):
+CRITICAL: Never return "Unknown" or empty strings. Infer from context, URL, or surrounding text if needed.
+
+Job text:
 ${snippet}`;
 
   try {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Filter request timed out")), 30000),
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+      }),
     );
-    const completion = await Promise.race([
-      withRetry(() =>
-        client.chat.completions.create({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0,
-        }),
-      ),
-      timeout,
-    ]);
     const text = completion.choices[0]?.message?.content || "";
     const match = /\{[\s\S]*\}/.exec(text);
-    if (!match) return { isTech: true, title: "", company: "" };
+    if (!match) return { isProgrammingJob: true, title: "", company: "" };
     const parsed = JSON.parse(match[0]);
     return {
-      isTech: parsed.isTech !== false,
+      isProgrammingJob: parsed.isProgrammingJob !== false,
       title: parsed.title || "",
       company: parsed.company || "",
     };
@@ -92,51 +93,47 @@ ${snippet}`;
     logger.error(
       `  [Filter] Error: ${(err as Error).message} — proceeding with full analysis`,
     );
-    return { isTech: true, title: "", company: "" };
+    return { isProgrammingJob: true, title: "", company: "" };
   }
 }
 
-export interface ProgrammerFilterResult {
-  isProgrammerJob: boolean;
+export interface LinkedInPostFilterResult {
+  isProgrammingJob: boolean;
   title: string;
   company: string;
 }
 
-export async function classifyIsProgrammerJob(
+export async function classifyLinkedInPostIsProgrammingJob(
   postContent: string,
   apiKey: string,
   model: string,
-): Promise<ProgrammerFilterResult> {
+): Promise<LinkedInPostFilterResult> {
   const client = createClient(apiKey);
   const snippet = (postContent || "").slice(0, 2000);
-  if (!snippet.trim()) return { isProgrammerJob: true, title: "", company: "" };
+  if (!snippet.trim()) return { isProgrammingJob: true, title: "", company: "" };
 
-  const prompt = `Does this LinkedIn post contain ANY software/programming/tech/engineering/developer/IT job opening? The post may list multiple positions — return true if at least one is tech-related. JSON only, no markdown:
-{"isProgrammerJob": true|false, "title": "<best tech/IT job title found, or Unknown>", "company": "<inferred company or Unknown>"}
+  const prompt = `Does this LinkedIn post contain ANY programming/software/developer/tech/engineering/IT job opening? The post may list multiple positions — return true if at least one is programming-related. JSON only, no markdown:
+{"isProgrammingJob": true|false, "title": "<best programming job title found — infer from context if not explicit>", "company": "<inferred company from context — never leave empty>"}
+
+CRITICAL: Never return "Unknown" or empty strings. If the information is not directly stated, infer it from the post text, author profile, hashtags, or nearby context.
 
 Post text:
 ${snippet}`;
 
   try {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Programmer filter timed out")), 15000),
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+      }),
     );
-    const completion = await Promise.race([
-      withRetry(() =>
-        client.chat.completions.create({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0,
-        }),
-      ),
-      timeout,
-    ]);
     const text = completion.choices[0]?.message?.content || "";
     const match = /\{[\s\S]*\}/.exec(text);
-    if (!match) return { isProgrammerJob: true, title: "", company: "" };
+    if (!match) return { isProgrammingJob: true, title: "", company: "" };
     const parsed = JSON.parse(match[0]);
     return {
-      isProgrammerJob: parsed.isProgrammerJob !== false,
+      isProgrammingJob: parsed.isProgrammingJob !== false,
       title: parsed.title || "",
       company: parsed.company || "",
     };
@@ -144,7 +141,7 @@ ${snippet}`;
     logger.error(
       `  [Filter] Programmer check error: ${(err as Error).message} — proceeding with full analysis`,
     );
-    return { isProgrammerJob: true, title: "", company: "" };
+    return { isProgrammingJob: true, title: "", company: "" };
   }
 }
 
@@ -158,12 +155,12 @@ function buildPrompt(
       ? rawText
         ? `The job page could not be scraped. Here are user-provided notes about the job:\n${rawText}`
         : "The job page could not be scraped and no notes were provided."
-      : `Here is the raw text extracted from the job posting page:\n\n${rawText.slice(0, 8000)}`;
+      : `Here is the raw text extracted from the job posting page:\n\n${rawText}`;
 
   return `You are a job-fit analyzer. Respond ONLY with valid JSON — no markdown, no explanation, no extra text.
 
 ## Resume
-${resumeText.slice(0, 4000)}
+${resumeText}
 
 ## Job Posting
 ${jobContent}
@@ -173,9 +170,9 @@ Extract the job details and score the fit between the resume and the job posting
 
 Return exactly this JSON schema:
 {
-  "title": "<job title or Unknown>",
-  "company": "<company name or Unknown>",
-  "location": "<location or Unknown>",
+  "title": "<job title — infer from posting if not explicitly stated>",
+  "company": "<company name — infer from posting if not explicitly stated>",
+  "location": "<location — infer from posting if not explicitly stated>",
   "salary": "<salary range or Not listed>",
   "descriptionSummary": "<2-3 sentence summary of the role>",
   "score": <integer 0-100>,
@@ -184,6 +181,14 @@ Return exactly this JSON schema:
   "summary": "<2-3 sentences on why this is or isn't a good fit>",
   "recommendation": "<Apply | Consider | Skip>"
 }
+
+CRITICAL RULES:
+- You must NEVER return "Unknown", "Not specified", or empty strings for title, company, or location.
+- If a value is not explicitly stated, infer it from context: company name from the URL domain, author name, email domain, or surrounding text.
+- For title: look for role names, position headers, "hiring for", "looking for" phrases.
+- For company: look for "at Company", "join us at", email domains, or the posting site's brand.
+- For location: look for city names, "remote", "hybrid", "onsite" indicators.
+- Think hard — every field must contain a real, extracted or inferred value.
 
 Scoring guide:
 - 90-100: Near-perfect match, apply immediately
@@ -206,12 +211,12 @@ function createCoverLetterPrompt(
   return `You are an expert career coach who writes compelling, personalized cover letters.
 
 ## Candidate Resume
-${resumeText.slice(0, 4000)}
+${resumeText}
 
 ## Job Details
-- Title: ${job.title || "Unknown"}
-- Company: ${job.company || "Unknown"}
-- Location: ${job.location || "Unknown"}
+- Title: ${job.title || "Not specified"}
+- Company: ${job.company || "Not specified"}
+- Location: ${job.location || "Not specified"}
 - Role Summary: ${job.descriptionSummary || "Not available"}
 
 ## Matched Skills
@@ -252,22 +257,13 @@ export async function generateCoverLetter(
 
   let responseText = "";
   try {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Cover letter generation timed out after 60s")),
-        60000,
-      ),
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+      }),
     );
-    const completion = await Promise.race([
-      withRetry(() =>
-        client.chat.completions.create({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.7,
-        }),
-      ),
-      timeout,
-    ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
     logger.error(`  [AI] Cover letter error: ${(err as Error).message}`);
@@ -292,12 +288,12 @@ function createApplicationEmailPrompt(
   return `You are an expert career coach who writes compelling, personalized job-application emails.
 
 ## Candidate Resume
-${resumeText.slice(0, 4000)}
+${resumeText}
 
 ## Job Details
-- Title: ${job.title || "Unknown"}
-- Company: ${job.company || "Unknown"}
-- Location: ${job.location || "Unknown"}
+- Title: ${job.title || "Not specified"}
+- Company: ${job.company || "Not specified"}
+- Location: ${job.location || "Not specified"}
 - Role Summary: ${job.descriptionSummary || "Not available"}
 
 ## Matched Skills
@@ -349,22 +345,13 @@ export async function generateApplicationEmail(
 
   let responseText = "";
   try {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Email generation timed out after 60s")),
-        60000,
-      ),
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+      }),
     );
-    const completion = await Promise.race([
-      withRetry(() =>
-        client.chat.completions.create({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.7,
-        }),
-      ),
-      timeout,
-    ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
     logger.error(`  [AI] Email generation error: ${(err as Error).message}`);
@@ -429,12 +416,12 @@ function createAnswerPrompt(
   return `You are an expert career coach who helps job applicants answer application questions convincingly and authentically.
 
 ## Candidate Resume
-${resumeText.slice(0, 4000)}
+${resumeText}
 
 ## Job Details
-- Title: ${job.title || "Unknown"}
-- Company: ${job.company || "Unknown"}
-- Location: ${job.location || "Unknown"}
+- Title: ${job.title || "Not specified"}
+- Company: ${job.company || "Not specified"}
+- Location: ${job.location || "Not specified"}
 - Role Summary: ${job.descriptionSummary || "Not available"}
 
 ## Matched Skills
@@ -475,22 +462,13 @@ export async function generateAnswer(
 
   let responseText = "";
   try {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Answer generation timed out after 60s")),
-        60000,
-      ),
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+      }),
     );
-    const completion = await Promise.race([
-      withRetry(() =>
-        client.chat.completions.create({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.7,
-        }),
-      ),
-      timeout,
-    ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
     logger.error(`  [AI] Answer error: ${(err as Error).message}`);
@@ -504,10 +482,10 @@ function buildLinkedInPrompt(postContent: string, resumeText: string) {
   return `You are a job-fit analyzer specializing in informal LinkedIn posts. Respond ONLY with valid JSON — no markdown, no explanation, no extra text.
 
 ## Candidate Resume
-${resumeText.slice(0, 4000)}
+${resumeText}
 
 ## LinkedIn Post
-${postContent.slice(0, 6000)}
+${postContent}
 
 ## Task
 1. Determine if this LinkedIn post contains one or more job opportunities.
@@ -518,8 +496,8 @@ Return exactly this JSON schema:
 {
   "isJob": true|false,
   "title": "<the specific job title that best matches the resume, not just the first listed>",
-  "company": "<company name or Unknown>",
-  "location": "<location or Unknown>",
+  "company": "<company name — infer from post if not explicitly stated>",
+  "location": "<location — infer from post if not explicitly stated>",
   "salary": "<salary range or Not listed>",
   "descriptionSummary": "<2-3 sentence summary of the best-matched role and why it was selected over other listed positions>",
   "score": <integer 0-100>,
@@ -530,6 +508,14 @@ Return exactly this JSON schema:
   "applyUrl": "<apply/link URL from the post, or empty string if none>",
   "contactEmail": "<contact email from the post, or empty string if none>"
 }
+
+CRITICAL RULES:
+- You must NEVER return "Unknown", "Not specified", or empty strings for title, company, or location.
+- If a value is not explicitly stated, infer it from context: author name/headline for company, hashtags, post structure, or nearby text.
+- For title: look for role names, "hiring for", "looking for", "position:" phrases.
+- For company: look for "at Company", "join us at", author company, or headline mentions.
+- For location: look for city names, "remote", "hybrid", "onsite", "based in" indicators.
+- Think hard — every field must contain a real, extracted or inferred value.
 
 Scoring guide:
 - 90-100: Near-perfect match, apply immediately
@@ -577,22 +563,13 @@ export async function analyzeLinkedInPost(
 
   let responseText = "";
   try {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("LinkedIn AI request timed out after 60s")),
-        60000,
-      ),
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+      }),
     );
-    const completion = await Promise.race([
-      withRetry(() =>
-        client.chat.completions.create({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.2,
-        }),
-      ),
-      timeout,
-    ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
     logger.error(`  [AI] LinkedIn API error: ${(err as Error).message}`);
@@ -619,9 +596,9 @@ export async function analyzeLinkedInPost(
 
   return {
     isJob: parsed.isJob === true,
-    title: (parsed.title as string) || SENTINEL.title,
-    company: (parsed.company as string) || SENTINEL.company,
-    location: (parsed.location as string) || SENTINEL.location,
+    title: normStr(parsed.title) || SENTINEL.title,
+    company: normStr(parsed.company) || SENTINEL.company,
+    location: normStr(parsed.location) || SENTINEL.location,
     salary: (parsed.salary as string) || SENTINEL.salary,
     descriptionSummary:
       (parsed.descriptionSummary as string) || SENTINEL.descriptionSummary,
@@ -650,15 +627,15 @@ export async function analyzeJob(
 
   const client = createClient(apiKey);
 
-  const filter = await classifyIsTech(rawText, scrapeStatus, model, client);
-  if (!filter.isTech) {
+  const filter = await classifyIsProgrammingJobBoard(rawText, scrapeStatus, model, client);
+  if (!filter.isProgrammingJob) {
     logger.info(
-      `  [Filter] Non-tech job — skipped (${filter.title || "unknown title"})`,
+      `  [Filter] Non-programming job — skipped (${filter.title || "unknown title"})`,
     );
     return {
       url,
-      title: filter.title || "Unknown",
-      company: filter.company || "Unknown",
+      title: filter.title || "",
+      company: filter.company || "",
       location: "Not analyzed",
       salary: "Not analyzed",
       descriptionSummary: "Non-tech job — skipped by pre-filter",
@@ -685,22 +662,13 @@ export async function analyzeJob(
 
   let responseText = "";
   try {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("AI request timed out after 60s")),
-        60000,
-      ),
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+      }),
     );
-    const completion = await Promise.race([
-      withRetry(() =>
-        client.chat.completions.create({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.2,
-        }),
-      ),
-      timeout,
-    ]);
     responseText = completion.choices[0]?.message?.content || "";
   } catch (err) {
     logger.error(`  [AI] API error: ${(err as Error).message}`);
@@ -727,9 +695,9 @@ export async function analyzeJob(
 
   return {
     url,
-    title: (parsed.title as string) || SENTINEL.title,
-    company: (parsed.company as string) || SENTINEL.company,
-    location: (parsed.location as string) || SENTINEL.location,
+    title: normStr(parsed.title) || SENTINEL.title,
+    company: normStr(parsed.company) || SENTINEL.company,
+    location: normStr(parsed.location) || SENTINEL.location,
     salary: (parsed.salary as string) || SENTINEL.salary,
     descriptionSummary:
       (parsed.descriptionSummary as string) || SENTINEL.descriptionSummary,
@@ -783,8 +751,8 @@ function createTailoredResumePrompt(
   return `You are an expert resume writer. Tailor the candidate's base resume to match the target job posting. Do NOT invent or inflate experience — only reword, reorder, and emphasize what is actually in the base resume.
 
 TARGET JOB:
-- Title: ${job.title || "Unknown"}
-- Company: ${job.company || "Unknown"}
+- Title: ${job.title || "Not specified"}
+- Company: ${job.company || "Not specified"}
 - Location: ${job.location || "Not specified"}
 - Description: ${job.descriptionSummary || "Not available"}
 - Key skills mentioned: ${(job.matchedSkills || []).join(", ") || "N/A"}
@@ -882,23 +850,14 @@ export async function generateTailoredResume(
   for (let attempt = 0; attempt <= 1; attempt++) {
     let responseText = "";
     try {
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Tailored resume generation timed out after 120s")),
-          120000,
-        ),
+      const completion = await withRetry(() =>
+        client.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt + (attempt > 0 ? "\n\nIMPORTANT: Your previous response was truncated. Please return a shorter, complete JSON response that fits within the token limit. Be more concise with bullet points and descriptions." : "") }],
+          temperature: 0.5,
+          max_tokens: 8192,
+        }),
       );
-      const completion = await Promise.race([
-        withRetry(() =>
-          client.chat.completions.create({
-            model,
-            messages: [{ role: "user", content: prompt + (attempt > 0 ? "\n\nIMPORTANT: Your previous response was truncated. Please return a shorter, complete JSON response that fits within the token limit. Be more concise with bullet points and descriptions." : "") }],
-            temperature: 0.5,
-            max_tokens: 8192,
-          }),
-        ),
-        timeout,
-      ]);
       responseText = completion.choices[0]?.message?.content || "";
     } catch (err) {
       logger.error(`  [AI] Tailored resume error: ${(err as Error).message}`);

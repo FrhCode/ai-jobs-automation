@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db";
 import type { SelectLinkedInPost } from "../db/schema";
 import { linkedinPosts } from "../db/schema";
-import { analyzeLinkedInPost, classifyIsProgrammerJob } from "./aiAnalyzer";
+import { analyzeLinkedInPost, classifyLinkedInPostIsProgrammingJob } from "./aiAnalyzer";
 import type { ParsedPost } from "./linkedinParser";
 import { logger } from "./logger";
 
@@ -144,7 +144,7 @@ export async function processLinkedInBatch(
   const filterResults = await runWithLimit(
     tasks.map(({ post, postId }) => async () => {
       try {
-        const result = await classifyIsProgrammerJob(
+        const result = await classifyLinkedInPostIsProgrammingJob(
           post.postContent,
           apiKey,
           model,
@@ -185,15 +185,15 @@ export async function processLinkedInBatch(
       continue;
     }
 
-    if (!fr.result.isProgrammerJob) {
+    if (!fr.result.isProgrammingJob) {
       // Not a programmer job — save minimal result
       skippedCount++;
       await db
         .update(linkedinPosts)
         .set({
           isJob: false,
-          title: fr.result.title || "Unknown",
-          company: fr.result.company || "Unknown",
+          title: fr.result.title || "",
+          company: fr.result.company || "",
           score: 0,
           recommendation: "Skip",
           summary: "Not a programmer/tech job — filtered out",

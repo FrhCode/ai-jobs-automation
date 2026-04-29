@@ -15,7 +15,6 @@ function createClient(apiKey: string) {
   return new OpenAI({
     baseURL: 'https://openrouter.ai/api/v1',
     apiKey,
-    timeout: 120000,
     maxRetries: 0,
     defaultHeaders: {
       'HTTP-Referer': 'https://github.com/FrhCode/job-search-automation',
@@ -212,18 +211,14 @@ export const chatRoutes = new Elysia({ prefix: '/api/chat' })
 
     (async () => {
       try {
-        const timeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Analyze request timed out after 120s')), 120000),
-        );
-        const completion = await Promise.race<OpenAI.Chat.Completions.ChatCompletion>([
-          client.chat.completions.create({
-            model,
-            temperature: 0.3,
-            max_tokens: 2048,
-            messages: [
-              {
-                role: 'system',
-                content: `You are a resume analyst. Today is ${today}. Use this as your reference date when evaluating employment timelines, dates, and anything time-sensitive.
+        const completion = await client.chat.completions.create({
+          model,
+          temperature: 0.3,
+          max_tokens: 2048,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a resume analyst. Today is ${today}. Use this as your reference date when evaluating employment timelines, dates, and anything time-sensitive.
 
 ABSOLUTE RULES — NEVER VIOLATE:
 1. NEVER flag "total years of experience" summary statements (e.g., "4 years of experience", "5+ years", "over 3 years") as "overstated" or "exaggerated" just because individual job durations might add up to slightly less. Total years is a rounded, good-faith estimate that includes internships, freelance, part-time, overlapping roles, or gaps not listed in detail. ONLY flag date claims if there is a clear factual impossibility (e.g., claiming 10 years but the oldest listed role is from 2 years ago).
@@ -234,10 +229,10 @@ SECTION-SPECIFIC RULES:
 - Personal projects are allowed to be descriptive rather than metric-driven.
 
 Return ONLY valid JSON with no explanation, no markdown fences, no extra text.`,
-              },
-              {
-                role: 'user',
-                content: `Analyze this resume and identify 3-7 weak spots that need improvement. For each weak spot, find an exact short phrase or sentence from the resume text.
+            },
+            {
+              role: 'user',
+              content: `Analyze this resume and identify 3-7 weak spots that need improvement. For each weak spot, find an exact short phrase or sentence from the resume text.
 
 IMPORTANT: Do NOT flag "total years of experience" claims as overstated. Rounded totals (e.g., "4 years") are normal and valid even if individual job tenures don't perfectly sum to that number.
 
@@ -250,11 +245,9 @@ Return ONLY this JSON structure (no markdown, no explanation):
 {"weakSpots":[{"snippet":"exact short phrase copied from resume","issue":"concise reason it is weak","severity":"high"}]}
 
 severity must be "high" or "medium". snippet must be an exact substring of the resume text, kept short (under 80 chars).`,
-              },
-            ],
-          }),
-          timeout,
-        ]);
+            },
+          ],
+        });
 
         const raw = completion.choices[0]?.message?.content || '{}';
         const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
