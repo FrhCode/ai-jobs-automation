@@ -62,16 +62,25 @@ export function useUpdateLinkedInPost() {
       updateLinkedInPost(id, body),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: qk.linkedinPosts() });
-      const snapshots = qc.getQueriesData<PostsPage>({ queryKey: qk.linkedinPosts() });
+      await qc.cancelQueries({ queryKey: qk.linkedinPost(vars.id) });
+      const listSnapshots = qc.getQueriesData<PostsPage>({ queryKey: qk.linkedinPosts() });
+      const detailSnapshot = qc.getQueryData<LinkedInPost>(qk.linkedinPost(vars.id));
       const { id, ...fields } = vars;
       qc.setQueriesData<PostsPage>({ queryKey: qk.linkedinPosts() }, (old) => {
         if (!old) return old;
-        return { ...old, posts: old.posts.map((p) => p.id === id ? { ...p, ...fields } : p) };
+        return { ...old, posts: old.posts.map((p) => (p.id === id ? { ...p, ...fields } : p)) };
       });
-      return { snapshots };
+      qc.setQueryData<LinkedInPost>(qk.linkedinPost(id), (old) => {
+        if (!old) return old;
+        return { ...old, ...fields };
+      });
+      return { listSnapshots, detailSnapshot };
     },
-    onError: (_err, _vars, ctx) => {
-      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    onError: (_err, vars, ctx) => {
+      ctx?.listSnapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      if (ctx?.detailSnapshot) {
+        qc.setQueryData(qk.linkedinPost(vars.id), ctx.detailSnapshot);
+      }
     },
     onSettled: (data, _err, vars) => {
       qc.invalidateQueries({ queryKey: qk.linkedinPost(vars.id) });

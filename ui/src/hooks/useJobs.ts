@@ -17,6 +17,7 @@ import {
   deleteJobQuestion,
 } from '@/api';
 import type { JobsQuery, UpdateJob, CreateQuestionInput, UpdateQuestionInput } from '@/shared/schemas';
+import type { Job } from '@/types/data';
 
 
 export function useJobs(filters: JobsQuery) {
@@ -38,9 +39,31 @@ export function useUpdateJob() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...body }: UpdateJob & { id: number }) => updateJob(id, body),
-    onSuccess: (_data, variables) => {
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: qk.jobs() });
+      await qc.cancelQueries({ queryKey: qk.job(vars.id) });
+      const listSnapshots = qc.getQueriesData<{ jobs: Job[]; total: number; page: number }>({ queryKey: qk.jobs() });
+      const detailSnapshot = qc.getQueryData<Job>(qk.job(vars.id));
+      const { id, ...fields } = vars;
+      qc.setQueriesData<{ jobs: Job[]; total: number; page: number }>({ queryKey: qk.jobs() }, (old) => {
+        if (!old) return old;
+        return { ...old, jobs: old.jobs.map((j) => (j.id === id ? { ...j, ...fields } : j)) };
+      });
+      qc.setQueryData<Job>(qk.job(id), (old) => {
+        if (!old) return old;
+        return { ...old, ...fields };
+      });
+      return { listSnapshots, detailSnapshot };
+    },
+    onError: (_err, vars, ctx) => {
+      ctx?.listSnapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      if (ctx?.detailSnapshot) {
+        qc.setQueryData(qk.job(vars.id), ctx.detailSnapshot);
+      }
+    },
+    onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: qk.jobs() });
-      qc.invalidateQueries({ queryKey: qk.job(variables.id) });
+      qc.invalidateQueries({ queryKey: qk.job(vars.id) });
     },
   });
 }

@@ -226,6 +226,7 @@ ABSOLUTE RULES — NEVER VIOLATE:
 
 SECTION-SPECIFIC RULES:
 - For WORK EXPERIENCE sections: expect metrics, business impact, outcomes, and quantified achievements.
+- READ COMPLETE BULLET POINTS: a bullet may span multiple sentences. Do NOT flag a bullet for "lacking metrics" or "missing impact" if quantified results appear ANYWHERE in that same bullet point.
 - Personal projects are allowed to be descriptive rather than metric-driven.
 
 Return ONLY valid JSON with no explanation, no markdown fences, no extra text.`,
