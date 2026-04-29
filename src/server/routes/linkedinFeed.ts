@@ -337,7 +337,10 @@ export const linkedinFeedRoutes = new Elysia({ prefix: '/api' })
       .select()
       .from(linkedinPosts)
       .where(whereClause)
-      .orderBy(dir === 'desc' ? desc(linkedinPosts[sort as keyof typeof linkedinPosts.$inferSelect]) : asc(linkedinPosts[sort as keyof typeof linkedinPosts.$inferSelect]))
+      .orderBy(
+        dir === 'desc' ? desc(linkedinPosts[sort as keyof typeof linkedinPosts.$inferSelect]) : asc(linkedinPosts[sort as keyof typeof linkedinPosts.$inferSelect]),
+        desc(linkedinPosts.id),
+      )
       .limit(limit)
       .offset((page - 1) * limit);
 
