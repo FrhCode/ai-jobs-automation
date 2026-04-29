@@ -649,7 +649,6 @@ export function LinkedInFeedPage() {
           {data?.posts.filter((p) => !dismissedIds.has(p.id)).map((post) => (
             <motion.div
               key={post.id}
-              layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -60, scale: 0.96, transition: { duration: 0.26 } }}
