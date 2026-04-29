@@ -227,6 +227,7 @@ ABSOLUTE RULES — NEVER VIOLATE:
 SECTION-SPECIFIC RULES:
 - For WORK EXPERIENCE sections: expect metrics, business impact, outcomes, and quantified achievements.
 - READ COMPLETE BULLET POINTS: a bullet may span multiple sentences. Do NOT flag a bullet for "lacking metrics" or "missing impact" if quantified results appear ANYWHERE in that same bullet point.
+- METRIC DETECTION RULE: Before flagging any bullet for "lacking metrics" or "missing impact," check whether the bullet already contains numbers, percentages, dollar amounts, time savings, user counts, or other quantified results. If it DOES contain any quantified result, you must NOT flag it as lacking metrics. Instead, evaluate whether the metric is strong or if additional metrics would help.
 - Personal projects are allowed to be descriptive rather than metric-driven.
 
 Return ONLY valid JSON with no explanation, no markdown fences, no extra text.`,
