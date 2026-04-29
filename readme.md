@@ -138,7 +138,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.2.3** (Current)
+**1.2.4** (Current)
+
+- **Early Email Warning** — The "You already emailed this recruiter..." banner now appears immediately when opening a LinkedIn post detail page, before you click Generate Email. Previously it only showed after the email was generated, defeating the purpose of the heads-up
+
+**1.2.3**
 
 - **AI "Unknown" Fix** — Removed input truncation (8K/6K/4K character limits) and artificial Promise.race timeouts from all AI analysis paths. Hardened extraction prompts with `CRITICAL: Never return "Unknown" or empty strings. Infer from context...` for both job boards and LinkedIn posts
 - **LinkedIn Batch Date Fix** — Batch history now uses `max(updatedAt)` instead of `min(createdAt)`, so batch dates reflect when they were actually processed rather than the oldest post's original insertion date

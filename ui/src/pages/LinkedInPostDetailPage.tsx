@@ -266,6 +266,14 @@ export function LinkedInPostDetailPage() {
     : extractEmails(post?.postContent ?? "");
   const { data: recruiterContact } = useRecruiterContact(emails[0] ?? null);
 
+  const lastEmailedAt = recruiterContact?.lastEmailedAt
+    ? new Date(recruiterContact.lastEmailedAt)
+    : post?.emailSentAt ? new Date(post.emailSentAt) : null;
+  const hoursSinceSent = lastEmailedAt
+    ? (Date.now() - lastEmailedAt.getTime()) / (1000 * 60 * 60)
+    : null;
+  const recentlyEmailed = hoursSinceSent !== null && hoursSinceSent < 24;
+
   const [emailTo, setEmailTo] = useState(emails[0] ?? "");
 
   // When polling detects generation finished, refresh the post to get subject/body
@@ -564,6 +572,15 @@ export function LinkedInPostDetailPage() {
                 </div>
 
                 <div className="space-y-3">
+                  {recentlyEmailed && !emailSubject && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-amber/10 border border-amber/20 text-amber text-sm">
+                      <Clock className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>
+                        You already emailed this recruiter {hoursSinceSent! < 1 ? "just now" : `${Math.round(hoursSinceSent!)} hour${Math.round(hoursSinceSent!) !== 1 ? "s" : ""} ago`}{recruiterContact && recruiterContact.emailCount > 1 ? ` (${recruiterContact.emailCount}× total)` : ""}. Sending again may look spammy.
+                      </span>
+                    </div>
+                  )}
+
                   {emailStatus !== 'generating' && !emailSubject && emailStatus !== 'failed' && (
                     <button
                       onClick={() => { generateEmail.mutate(postId); }}
@@ -598,12 +615,6 @@ export function LinkedInPostDetailPage() {
                   )}
 
                   {emailSubject && (() => {
-                    const lastEmailedAt = recruiterContact?.lastEmailedAt
-                      ? new Date(recruiterContact.lastEmailedAt)
-                      : post.emailSentAt ? new Date(post.emailSentAt) : null;
-                    const hoursSinceSent = lastEmailedAt ? (Date.now() - lastEmailedAt.getTime()) / (1000 * 60 * 60) : null;
-                    const withinWindow = hoursSinceSent !== null && hoursSinceSent < 24;
-
                     const setReminder = (hoursFromSent: number) => {
                       const base = lastEmailedAt ?? new Date();
                       const reminderAt = new Date(base.getTime() + hoursFromSent * 60 * 60 * 1000).toISOString();
@@ -612,7 +623,7 @@ export function LinkedInPostDetailPage() {
 
                     return (
                       <div className="space-y-3">
-                        {withinWindow && (
+                        {recentlyEmailed && (
                           <div className="flex items-start gap-2 p-3 rounded-lg bg-amber/10 border border-amber/20 text-amber text-sm">
                             <Clock className="w-4 h-4 shrink-0 mt-0.5" />
                             <span>
