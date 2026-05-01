@@ -14,6 +14,7 @@ Automate job evaluation against your resume using AI. This application scrapes j
 - **Screening Questions** — AI-generated screening questions per job with answer management
 - **Queue System** — Background processing for scraping and analysis tasks
 - **Stats Dashboard** — Overview of your job search pipeline
+- **Shareable CV Links** — Generate public share links for tailored resumes so recruiters can view them directly without login
 - **Secure** — Password-protected access with SSRF guard on outbound requests
 
 ## Tech Stack
@@ -138,7 +139,11 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.2.4** (Current)
+**1.3.0** (Current)
+
+- **Shareable CV Links** — Generate public share links for tailored resumes on both Job Detail and LinkedIn Post Detail pages. Anyone with the link can view the PDF directly without logging in. Links are reusable — the same token is returned if you click Share again
+
+**1.2.4**
 
 - **Early Email Warning** — The "You already emailed this recruiter..." banner now appears immediately when opening a LinkedIn post detail page, before you click Generate Email. Previously it only showed after the email was generated, defeating the purpose of the heads-up
 

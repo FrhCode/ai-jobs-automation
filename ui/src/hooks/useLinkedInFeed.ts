@@ -20,6 +20,7 @@ import {
   deleteLinkedInPost,
   getLinkedInReminders,
   getRecruiterContact,
+  shareLinkedInPostCv,
 } from '@/api';
 
 type PostsPage = { posts: LinkedInPost[]; total: number; page: number };
@@ -241,5 +242,11 @@ export function useRetryLinkedInBatch() {
       qc.invalidateQueries({ queryKey: qk.linkedinBatch(batchId) });
       qc.invalidateQueries({ queryKey: qk.linkedinBatches() });
     },
+  });
+}
+
+export function useShareLinkedInPostCv() {
+  return useMutation({
+    mutationFn: (id: number) => shareLinkedInPostCv(id),
   });
 }

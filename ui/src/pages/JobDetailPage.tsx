@@ -14,6 +14,7 @@ import {
   useCreateJobQuestion,
   useUpdateJobQuestion,
   useDeleteJobQuestion,
+  useShareJobCv,
 } from '@/hooks/useJobs';
 import type { AppStatus } from '@/shared/constants';
 import { useEffect } from 'react';
@@ -45,6 +46,7 @@ export function JobDetailPage() {
   }, [coverLetterStatusData, jobId, qc]);
 
   const isGeneratingTailoredResume = generateTailoredResume.isPending || job?.tailoredResumeStatus === 'generating';
+  const shareJobCvMutation = useShareJobCv();
   const createQuestion = useCreateJobQuestion();
   const updateQuestion = useUpdateJobQuestion();
   const deleteQuestion = useDeleteJobQuestion();
@@ -76,6 +78,17 @@ export function JobDetailPage() {
       onDownloadTailoredResumePdf={() => {
         window.open(`${import.meta.env.VITE_API_URL}/api/jobs/${jobId}/tailored-resume.pdf`, '_blank');
       }}
+      onShareTailoredResume={async () => {
+        try {
+          const { token } = await shareJobCvMutation.mutateAsync({ id: jobId });
+          const shareUrl = `${import.meta.env.VITE_API_URL}/public/cv/${token}`;
+          await navigator.clipboard.writeText(shareUrl);
+          alert('Share link copied to clipboard!');
+        } catch (err) {
+          alert((err as Error).message || 'Failed to create share link');
+        }
+      }}
+      isSharingTailoredResume={shareJobCvMutation.isPending}
       questions={questions ?? []}
       questionsLoading={questionsLoading}
       onCreateQuestion={(question) => createQuestion.mutate({ id: jobId, question })}

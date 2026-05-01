@@ -11,6 +11,7 @@ import { cronRoutes } from './routes/cron';
 import { openrouterRoutes } from './routes/openrouter';
 import { linkedinFeedRoutes } from './routes/linkedinFeed';
 import { chatRoutes } from './routes/chat';
+import { shareRoutes } from './routes/share';
 
 function getCorsOrigin() {
   if (process.env.NODE_ENV === 'development') return 'http://localhost:3000';
@@ -43,7 +44,8 @@ export const app = new Elysia()
   .use(cronRoutes)
   .use(openrouterRoutes)
   .use(linkedinFeedRoutes)
-  .use(chatRoutes);
+  .use(chatRoutes)
+  .use(shareRoutes);
 
 if (process.env.NODE_ENV === 'production') {
   app.use(staticPlugin({

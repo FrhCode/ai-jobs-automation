@@ -147,6 +147,15 @@ export const recruiterContacts = pgTable('recruiter_contacts', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const cvShares = pgTable('cv_shares', {
+  token: text('token').primaryKey(),
+  jobId: integer('job_id'),
+  linkedinPostId: integer('linkedin_post_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type SelectLinkedInPost = typeof linkedinPosts.$inferSelect;
 export type InsertLinkedInPost = typeof linkedinPosts.$inferInsert;
 export type SelectRecruiterContact = typeof recruiterContacts.$inferSelect;
+export type SelectCvShare = typeof cvShares.$inferSelect;
+export type InsertCvShare = typeof cvShares.$inferInsert;

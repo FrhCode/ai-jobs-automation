@@ -18,6 +18,7 @@ import {
   useUpdateLinkedInPost,
   useUpdateLinkedInPostQuestion,
   useRecruiterContact,
+  useShareLinkedInPostCv,
 } from "@/hooks/useLinkedInFeed";
 import { useSettings } from "@/hooks/useSettings";
 import { StatusToggle } from "@/components/StatusToggle";
@@ -243,6 +244,7 @@ export function LinkedInPostDetailPage() {
   }, [statusData, postId, qc]);
 
   const isGeneratingTailoredResume = generateTailoredResume.isPending || post?.tailoredResumeStatus === 'generating';
+  const shareLinkedInPostCvMutation = useShareLinkedInPostCv();
   const createQuestion = useCreateLinkedInPostQuestion();
   const updateQuestion = useUpdateLinkedInPostQuestion();
   const deleteQuestion = useDeleteLinkedInPostQuestion();
@@ -845,13 +847,32 @@ export function LinkedInPostDetailPage() {
             Tailored CV
           </h3>
           {post.tailoredResumePdfPath && (
-            <button
-              onClick={() => window.open(`${import.meta.env.VITE_API_URL}/api/linkedin-posts/${postId}/tailored-resume.pdf`, '_blank')}
-              className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer"
-            >
-              <FileDown className="w-3.5 h-3.5" />
-              Download PDF
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => window.open(`${import.meta.env.VITE_API_URL}/api/linkedin-posts/${postId}/tailored-resume.pdf`, '_blank')}
+                className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                Download PDF
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const { token } = await shareLinkedInPostCvMutation.mutateAsync(postId);
+                    const shareUrl = `${import.meta.env.VITE_API_URL}/public/cv/${token}`;
+                    await navigator.clipboard.writeText(shareUrl);
+                    alert('Share link copied to clipboard!');
+                  } catch (err) {
+                    alert((err as Error).message || 'Failed to create share link');
+                  }
+                }}
+                disabled={shareLinkedInPostCvMutation.isPending}
+                className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <LinkIcon className="w-3.5 h-3.5" />
+                {shareLinkedInPostCvMutation.isPending ? 'Generating...' : 'Share Link'}
+              </button>
+            </div>
           )}
         </div>
 

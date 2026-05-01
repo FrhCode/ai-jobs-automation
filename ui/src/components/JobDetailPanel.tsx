@@ -20,6 +20,7 @@ import {
   ExternalLink,
   FileDown,
   FileText,
+  Link,
   Loader2,
   MapPin,
   MessageCircleQuestion,
@@ -44,6 +45,8 @@ interface JobDetailPanelProps {
   readonly onGenerateTailoredResume?: () => void;
   readonly isGeneratingTailoredResume?: boolean;
   readonly onDownloadTailoredResumePdf?: () => void;
+  readonly onShareTailoredResume?: () => void;
+  readonly isSharingTailoredResume?: boolean;
   readonly questions?: JobQuestion[];
   readonly questionsLoading?: boolean;
   readonly onCreateQuestion?: (question: string) => void;
@@ -245,6 +248,8 @@ export function JobDetailPanel({
   onGenerateTailoredResume,
   isGeneratingTailoredResume,
   onDownloadTailoredResumePdf,
+  onShareTailoredResume,
+  isSharingTailoredResume,
   questions = [],
   questionsLoading = false,
   onCreateQuestion,
@@ -549,13 +554,25 @@ export function JobDetailPanel({
             Tailored CV
           </h3>
           {job.tailoredResumePdfPath && (
-            <button
-              onClick={onDownloadTailoredResumePdf}
-              className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer"
-            >
-              <FileDown className="w-3.5 h-3.5" />
-              Download PDF
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onDownloadTailoredResumePdf}
+                className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                Download PDF
+              </button>
+              {onShareTailoredResume && (
+                <button
+                  onClick={onShareTailoredResume}
+                  disabled={isSharingTailoredResume}
+                  className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Link className="w-3.5 h-3.5" />
+                  {isSharingTailoredResume ? 'Generating...' : 'Share Link'}
+                </button>
+              )}
+            </div>
           )}
         </div>
 

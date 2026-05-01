@@ -15,6 +15,7 @@ import {
   createJobQuestion,
   updateJobQuestion,
   deleteJobQuestion,
+  shareJobCv,
 } from '@/api';
 import type { JobsQuery, UpdateJob, CreateQuestionInput, UpdateQuestionInput } from '@/shared/schemas';
 import type { Job } from '@/types/data';
@@ -181,5 +182,11 @@ export function useDeleteJobQuestion() {
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: qk.jobQuestions(variables.id) });
     },
+  });
+}
+
+export function useShareJobCv() {
+  return useMutation({
+    mutationFn: ({ id }: { id: number }) => shareJobCv(id),
   });
 }

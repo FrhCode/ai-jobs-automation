@@ -572,3 +572,15 @@ export async function getRecruiterContact(email: string) {
     `/api/recruiter-contacts/${encodeURIComponent(email)}`,
   );
 }
+
+export async function shareJobCv(id: number) {
+  return request<{ token: string }>(`/api/jobs/${id}/share-cv`, {
+    method: "POST",
+  });
+}
+
+export async function shareLinkedInPostCv(id: number) {
+  return request<{ token: string }>(`/api/linkedin-posts/${id}/share-cv`, {
+    method: "POST",
+  });
+}
