@@ -264,6 +264,7 @@ export function JobDetailPanel({
   const [notesDraft, setNotesDraft] = useState(job.appNotes ?? "");
   const [newQuestion, setNewQuestion] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [justShared, setJustShared] = useState(false);
 
   const handleAddQuestion = () => {
     if (!newQuestion.trim() || !onCreateQuestion) return;
@@ -564,12 +565,34 @@ export function JobDetailPanel({
               </button>
               {onShareTailoredResume && (
                 <button
-                  onClick={onShareTailoredResume}
+                  onClick={async () => {
+                    try {
+                      await onShareTailoredResume();
+                      setJustShared(true);
+                      setTimeout(() => setJustShared(false), 2000);
+                    } catch {
+                      /* error handled by mutation */
+                    }
+                  }}
                   disabled={isSharingTailoredResume}
                   className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Link className="w-3.5 h-3.5" />
-                  {isSharingTailoredResume ? 'Generating...' : 'Share Link'}
+                  {justShared ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      Copied!
+                    </>
+                  ) : isSharingTailoredResume ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Link className="w-3.5 h-3.5" />
+                      Share Link
+                    </>
+                  )}
                 </button>
               )}
             </div>

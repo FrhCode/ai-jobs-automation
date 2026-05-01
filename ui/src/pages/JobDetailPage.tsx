@@ -79,14 +79,9 @@ export function JobDetailPage() {
         window.open(`${import.meta.env.VITE_API_URL}/api/jobs/${jobId}/tailored-resume.pdf`, '_blank');
       }}
       onShareTailoredResume={async () => {
-        try {
-          const { token } = await shareJobCvMutation.mutateAsync({ id: jobId });
-          const shareUrl = `${import.meta.env.VITE_API_URL}/public/cv/${token}`;
-          await navigator.clipboard.writeText(shareUrl);
-          alert('Share link copied to clipboard!');
-        } catch (err) {
-          alert((err as Error).message || 'Failed to create share link');
-        }
+        const { token } = await shareJobCvMutation.mutateAsync({ id: jobId });
+        const shareUrl = `${import.meta.env.VITE_API_URL}/public/cv/${token}`;
+        await navigator.clipboard.writeText(shareUrl);
       }}
       isSharingTailoredResume={shareJobCvMutation.isPending}
       questions={questions ?? []}

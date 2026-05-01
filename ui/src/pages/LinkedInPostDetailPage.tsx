@@ -245,6 +245,7 @@ export function LinkedInPostDetailPage() {
 
   const isGeneratingTailoredResume = generateTailoredResume.isPending || post?.tailoredResumeStatus === 'generating';
   const shareLinkedInPostCvMutation = useShareLinkedInPostCv();
+  const [justShared, setJustShared] = useState(false);
   const createQuestion = useCreateLinkedInPostQuestion();
   const updateQuestion = useUpdateLinkedInPostQuestion();
   const deleteQuestion = useDeleteLinkedInPostQuestion();
@@ -861,16 +862,31 @@ export function LinkedInPostDetailPage() {
                     const { token } = await shareLinkedInPostCvMutation.mutateAsync(postId);
                     const shareUrl = `${import.meta.env.VITE_API_URL}/public/cv/${token}`;
                     await navigator.clipboard.writeText(shareUrl);
-                    alert('Share link copied to clipboard!');
+                    setJustShared(true);
+                    setTimeout(() => setJustShared(false), 2000);
                   } catch (err) {
-                    alert((err as Error).message || 'Failed to create share link');
+                    /* error handled by mutation */
                   }
                 }}
                 disabled={shareLinkedInPostCvMutation.isPending}
                 className="flex items-center gap-1.5 text-xs text-cyan hover:text-cyan/80 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <LinkIcon className="w-3.5 h-3.5" />
-                {shareLinkedInPostCvMutation.isPending ? 'Generating...' : 'Share Link'}
+                {justShared ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Copied!
+                  </>
+                ) : shareLinkedInPostCvMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    Share Link
+                  </>
+                )}
               </button>
             </div>
           )}
