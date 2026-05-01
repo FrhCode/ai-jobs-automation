@@ -29,6 +29,7 @@ import {
   APP_STATUS_LABEL,
 } from "@/shared/constants";
 import { useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   CheckCircle2,
@@ -46,7 +47,6 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -107,7 +107,9 @@ export function LinkedInFeedPage() {
   const retry = useRetryLinkedInBatch();
   const update = useUpdateLinkedInPost();
   const { data: settings } = useSettings();
-  const maxFileSizeMb = settings?.max_linkedin_file_size_mb ? parseInt(settings.max_linkedin_file_size_mb, 10) : 100;
+  const maxFileSizeMb = settings?.max_linkedin_file_size_mb
+    ? parseInt(settings.max_linkedin_file_size_mb, 10)
+    : 100;
 
   // Chunked upload state
   const CHUNK_SIZE = 512 * 1024;
@@ -265,7 +267,11 @@ export function LinkedInFeedPage() {
     if (next === "not_interested") {
       setDismissedIds((prev) => new Set([...prev, postId]));
     } else {
-      setDismissedIds((prev) => { const s = new Set(prev); s.delete(postId); return s; });
+      setDismissedIds((prev) => {
+        const s = new Set(prev);
+        s.delete(postId);
+        return s;
+      });
     }
     update.mutate({ id: postId, appStatus: next });
   };
@@ -646,166 +652,177 @@ export function LinkedInFeedPage() {
           )}
 
           <AnimatePresence mode="popLayout">
-          {data?.posts.filter((p) => !dismissedIds.has(p.id)).map((post) => (
-            <motion.div
-              key={post.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -60, scale: 0.96, pointerEvents: "none", transition: { duration: 0.26 } }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              onClick={() => navigate(`/linkedin-feed/${post.id}`)}
-              className="glass-card rounded-xl overflow-hidden cursor-pointer hover:border-cyan/30 transition-colors"
-            >
-              <div className="p-4 sm:p-5 space-y-3">
-                {/* Author + delete */}
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-text-primary">
-                      {post.authorName || "Unknown author"}
-                    </p>
-                    {post.authorHeadline && (
-                      <p className="text-xs text-text-muted mt-0.5">
-                        {post.authorHeadline}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {post.appStatus && post.appStatus !== "not_applied" && (
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium",
-                          APP_STATUS_COLOR[
-                            post.appStatus as keyof typeof APP_STATUS_COLOR
-                          ] ?? "badge-slate",
+            {data?.posts
+              .filter((p) => !dismissedIds.has(p.id))
+              .map((post) => (
+                <motion.div
+                  key={post.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{
+                    opacity: 0,
+                    x: -60,
+                    scale: 0.96,
+                    pointerEvents: "none",
+                    transition: { duration: 0.26 },
+                  }}
+                  layout
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  onClick={() => navigate(`/linkedin-feed/${post.id}`)}
+                  className="glass-card rounded-xl overflow-hidden cursor-pointer hover:border-cyan/30 transition-colors"
+                >
+                  <div className="p-4 sm:p-5 space-y-3">
+                    {/* Author + delete */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-text-primary">
+                          {post.authorName || "Unknown author"}
+                        </p>
+                        {post.authorHeadline && (
+                          <p className="text-xs text-text-muted mt-0.5">
+                            {post.authorHeadline}
+                          </p>
                         )}
-                      >
-                        {
-                          APP_STATUS_LABEL[
-                            post.appStatus as keyof typeof APP_STATUS_LABEL
-                          ]
-                        }
-                      </span>
-                    )}
-                    {post.isJob === false && post.aiAnalyzed && (
-                      <Badge
-                        variant="outline"
-                        className="text-text-muted border-border-subtle"
-                      >
-                        Not programmer job
-                      </Badge>
-                    )}
-                    <button
-                      onClick={(e) =>
-                        handleToggleNotInterested(
-                          e,
-                          post.id,
-                          post.appStatus ?? null,
-                        )
-                      }
-                      disabled={update.isPending}
-                      className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer",
-                        post.appStatus === "not_interested"
-                          ? "text-text-muted bg-surface-elevated hover:text-text-primary"
-                          : "text-text-muted hover:text-amber hover:bg-amber/10",
-                      )}
-                      title={
-                        post.appStatus === "not_interested"
-                          ? "Mark as not applied"
-                          : "Not interested"
-                      }
-                    >
-                      {post.appStatus === "not_interested" ? (
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      ) : (
-                        <EyeOff className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeletePostId(post.id);
-                      }}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-rose hover:bg-rose-glow transition-all cursor-pointer"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Keywords */}
-                {post.matchedKeywords && post.matchedKeywords.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {post.matchedKeywords.map((kw) => (
-                      <Badge
-                        key={kw}
-                        variant="outline"
-                        className="text-cyan border-cyan/20 bg-cyan/5"
-                      >
-                        {kw}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-
-                {/* Content */}
-                <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed line-clamp-6">
-                  {post.postContent}
-                </div>
-
-                {/* AI Analysis */}
-                {post.aiAnalyzed && (
-                  <div className="pt-3 border-t border-border-subtle space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Sparkles className="w-3.5 h-3.5 text-cyan" />
-                      <ScoreBadge
-                        score={post.score}
-                        recommendation={post.recommendation}
-                      />
-                      {post.title && post.title !== "Unknown" && (
-                        <Badge variant="outline">{post.title}</Badge>
-                      )}
-                      {post.company && post.company !== "Unknown" && (
-                        <Badge variant="outline">{post.company}</Badge>
-                      )}
-                      {(post.applyUrl ||
-                        extractUrls(post.postContent).length > 0) && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-cyan/10 text-cyan">
-                          <LinkIcon className="w-3 h-3" />
-                          Link
-                        </span>
-                      )}
-                      {(post.contactEmail ||
-                        extractEmails(post.postContent).length > 0) && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-cyan/10 text-cyan">
-                          <Mail className="w-3 h-3" />
-                          Email
-                        </span>
-                      )}
-                    </div>
-                    {post.summary && (
-                      <p className="text-xs text-text-secondary">
-                        {post.summary}
-                      </p>
-                    )}
-                    {post.matchedSkills && post.matchedSkills.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {post.matchedSkills.map((s) => (
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {post.appStatus && post.appStatus !== "not_applied" && (
                           <span
-                            key={s}
-                            className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium bg-emerald/10 text-emerald"
+                            className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium",
+                              APP_STATUS_COLOR[
+                                post.appStatus as keyof typeof APP_STATUS_COLOR
+                              ] ?? "badge-slate",
+                            )}
                           >
-                            {s}
+                            {
+                              APP_STATUS_LABEL[
+                                post.appStatus as keyof typeof APP_STATUS_LABEL
+                              ]
+                            }
                           </span>
-                        ))}
+                        )}
+                        {post.isJob === false && post.aiAnalyzed && (
+                          <Badge
+                            variant="outline"
+                            className="text-text-muted border-border-subtle"
+                          >
+                            Not programmer job
+                          </Badge>
+                        )}
+                        <button
+                          onClick={(e) =>
+                            handleToggleNotInterested(
+                              e,
+                              post.id,
+                              post.appStatus ?? null,
+                            )
+                          }
+                          disabled={update.isPending}
+                          className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer",
+                            post.appStatus === "not_interested"
+                              ? "text-text-muted bg-surface-elevated hover:text-text-primary"
+                              : "text-text-muted hover:text-amber hover:bg-amber/10",
+                          )}
+                          title={
+                            post.appStatus === "not_interested"
+                              ? "Mark as not applied"
+                              : "Not interested"
+                          }
+                        >
+                          {post.appStatus === "not_interested" ? (
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          ) : (
+                            <EyeOff className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletePostId(post.id);
+                          }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-rose hover:bg-rose-glow transition-all cursor-pointer"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Keywords */}
+                    {post.matchedKeywords &&
+                      post.matchedKeywords.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {post.matchedKeywords.map((kw) => (
+                            <Badge
+                              key={kw}
+                              variant="outline"
+                              className="text-cyan border-cyan/20 bg-cyan/5"
+                            >
+                              {kw}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                    {/* Content */}
+                    <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed line-clamp-6">
+                      {post.postContent}
+                    </div>
+
+                    {/* AI Analysis */}
+                    {post.aiAnalyzed && (
+                      <div className="pt-3 border-t border-border-subtle space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Sparkles className="w-3.5 h-3.5 text-cyan" />
+                          <ScoreBadge
+                            score={post.score}
+                            recommendation={post.recommendation}
+                          />
+                          {post.title && post.title !== "Unknown" && (
+                            <Badge variant="outline">{post.title}</Badge>
+                          )}
+                          {post.company && post.company !== "Unknown" && (
+                            <Badge variant="outline">{post.company}</Badge>
+                          )}
+                          {(post.applyUrl ||
+                            extractUrls(post.postContent).length > 0) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-cyan/10 text-cyan">
+                              <LinkIcon className="w-3 h-3" />
+                              Link
+                            </span>
+                          )}
+                          {(post.contactEmail ||
+                            extractEmails(post.postContent).length > 0) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-cyan/10 text-cyan">
+                              <Mail className="w-3 h-3" />
+                              Email
+                            </span>
+                          )}
+                        </div>
+                        {post.summary && (
+                          <p className="text-xs text-text-secondary">
+                            {post.summary}
+                          </p>
+                        )}
+                        {post.matchedSkills &&
+                          post.matchedSkills.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {post.matchedSkills.map((s) => (
+                                <span
+                                  key={s}
+                                  className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium bg-emerald/10 text-emerald"
+                                >
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            </motion.div>
-          ))}
+                </motion.div>
+              ))}
           </AnimatePresence>
 
           {/* Pagination */}
