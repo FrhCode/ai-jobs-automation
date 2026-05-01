@@ -193,7 +193,7 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 lg:ml-60 min-h-screen pt-14 lg:pt-0">
+      <main className="flex-1 min-h-screen pt-14 lg:pt-0">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
           {children}
         </div>
