@@ -1,4 +1,4 @@
-import { JobsTable } from "@/components/JobsTable";
+import { JobsGrid } from "@/components/JobsGrid";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useDeleteJobs, useJobs, useUpdateJob } from "@/hooks/useJobs";
@@ -9,9 +9,16 @@ import {
 } from "@/shared/constants";
 import type { JobsQuery } from "@/shared/schemas";
 import { jobsQuerySchema } from "@/shared/schemas";
-import { Briefcase, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, Briefcase, Search, SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+
+const SORT_OPTIONS = [
+  { value: "score-desc", label: "Match Score (High → Low)" },
+  { value: "score-asc", label: "Match Score (Low → High)" },
+  { value: "addedAt-desc", label: "Recently Added" },
+  { value: "addedAt-asc", label: "Oldest First" },
+];
 
 export function JobsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -43,7 +50,23 @@ export function JobsPage() {
 
   const updateFilter = (key: keyof JobsQuery, value: string | undefined) => {
     if (filters[key] === value) return;
-    const next = { ...filters, [key]: value, ...(key !== "page" ? { page: 1 } : {}) };
+    const next = {
+      ...filters,
+      [key]: value,
+      ...(key !== "page" ? { page: 1 } : {}),
+    };
+    const sp = new URLSearchParams();
+    Object.entries(next).forEach(([k, v]) => {
+      if ((typeof v === "string" && v !== "") || typeof v === "number")
+        sp.set(k, String(v));
+    });
+    setSearchParams(sp);
+  };
+
+  const updateSort = (sortValue: string) => {
+    const [sort, dir] = sortValue.split("-") as [string, string];
+    if (filters.sort === sort && filters.dir === dir) return;
+    const next = { ...filters, sort, dir, page: 1 };
     const sp = new URLSearchParams();
     Object.entries(next).forEach(([k, v]) => {
       if ((typeof v === "string" && v !== "") || typeof v === "number")
@@ -78,6 +101,8 @@ export function JobsPage() {
 
   const applyCount =
     data?.jobs?.filter((j) => j.recommendation === "Apply").length ?? 0;
+
+  const currentSortValue = `${filters.sort}-${filters.dir}`;
 
   return (
     <div className="space-y-5 lg:space-y-6">
@@ -145,10 +170,24 @@ export function JobsPage() {
               </option>
             ))}
           </Select>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 sm:min-w-44">
+            <ArrowUpDown className="w-3.5 h-3.5 text-text-muted shrink-0 hidden sm:block" />
+            <Select
+              value={currentSortValue}
+              onChange={(e) => updateSort(e.target.value)}
+              className="w-full"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </div>
 
-      <JobsTable
+      <JobsGrid
         jobs={data?.jobs ?? []}
         onDelete={(ids) => deleteJobs.mutate({ ids })}
         onUpdateJob={(id, data) => updateJob.mutate({ id, ...data })}
@@ -172,7 +211,9 @@ export function JobsPage() {
           </span>
           <button
             className="px-4 py-2 rounded-lg border border-border-subtle text-sm text-text-secondary hover:text-text-primary hover:border-border-hover transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-            disabled={filters.page >= Math.ceil(data.total / filters.limit)}
+            disabled={
+              filters.page >= Math.ceil(data.total / filters.limit)
+            }
             onClick={() => updateFilter("page", String(filters.page + 1))}
           >
             Next

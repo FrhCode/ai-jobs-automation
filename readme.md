@@ -139,7 +139,15 @@ bun run db:studio     # Open Drizzle Studio
 
 ## Changelog
 
-**1.3.0** (Current)
+**1.3.1** (Current)
+
+- **Card Grid Jobs List** — Replaced the table display on the Jobs page with a responsive card grid (1/2/3 columns). More scannable, no horizontal scroll, and better use of screen space
+- **Sort Dropdown** — Added a "Sort by" dropdown to the Jobs filter bar: Match Score, Recently Added, Oldest First
+- **Inline Share Feedback** — Share Link buttons now show a brief "Copied!" checkmark instead of native `alert()` popups
+- **Layout Fix** — Fixed double left offset on desktop caused by overlapping sidebar spacing
+- **Removed `@tanstack/react-table`** — No longer needed after the card grid rewrite; shrinks bundle by ~47 KB
+
+**1.3.0**
 
 - **Shareable CV Links** — Generate public share links for tailored resumes on both Job Detail and LinkedIn Post Detail pages. Anyone with the link can view the PDF directly without logging in. Links are reusable — the same token is returned if you click Share again
 
